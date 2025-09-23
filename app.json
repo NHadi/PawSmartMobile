@@ -102,6 +102,9 @@
     "facebookAdvertiserIDCollection": false,
     "facebookScheme": "fb797841592820309",
     "extra": {
+      "eas": {
+        "projectId": "ed114fa0-7fdd-49bc-a930-a91244960a64"
+      }
     },
     "owner": "badamigroups"
   }
