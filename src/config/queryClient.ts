@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import apiClient from '../services/api/apiClient';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,8 +29,7 @@ export const prefetchProducts = async (categoryId?: number) => {
   await queryClient.prefetchQuery({
     queryKey: ['products', { category_id: categoryId, limit: 20 }],
     queryFn: async () => {
-      // Fetch initial products
-      const odooComService = (await import('../services/odoocom/odooComService')).default;
+      // Fetch initial products using unified client
       
       const domain: any[] = [
         ['sale_ok', '=', true],
@@ -40,14 +40,15 @@ export const prefetchProducts = async (categoryId?: number) => {
         domain.push(['categ_id', '=', categoryId]);
       }
 
-      return odooComService.searchRead(
+      return apiClient.odooExecute(
         'product.product',
-        domain,
-        [
-          'id', 'name', 'list_price', 'standard_price', 'qty_available',
-          'categ_id', 'image_128', 'default_code'
-        ],
+        'search_read',
+        [domain],
         {
+          fields: [
+            'id', 'name', 'list_price', 'standard_price', 'qty_available',
+            'categ_id', 'image_128', 'default_code'
+          ],
           limit: 20,
           offset: 0,
           order: 'name ASC',

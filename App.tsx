@@ -28,59 +28,36 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Test HTTP/HTTPS connectivity for debugging
-        console.log('🔍 Testing network connectivity...');
+        // Optional network connectivity test for APK debugging
+        // Only run if explicitly enabled via environment variable
+        if (process.env.EXPO_PUBLIC_DEBUG === 'true' && process.env.EXPO_PUBLIC_TEST_NETWORK === 'true') {
+          console.log('🔍 Testing network connectivity (debug mode)...');
 
-        const networkResults = [];
+          const networkResults = [];
 
-        try {
-          // Test basic HTTP connectivity
-          const httpTest = await fetch('http://httpbin.org/get', {
-            method: 'GET',
-            timeout: 5000,
-          });
-          console.log('✅ HTTP test successful:', httpTest.status);
-          networkResults.push(`HTTP Test: ✅ ${httpTest.status}`);
+          try {
+            // Test only essential Odoo server connectivity
+            const odooTest = await fetch('http://103.67.244.254:8069/web/database/selector', {
+              method: 'GET',
+              timeout: 8000,
+            });
+            console.log('✅ Odoo server accessible:', odooTest.status);
+            networkResults.push(`Odoo Server: ✅ Connected (${odooTest.status})`);
+          } catch (networkError: any) {
+            console.warn('⚠️ Odoo connectivity test failed:', networkError.message);
+            networkResults.push(`Odoo Server: ⚠️ ${networkError.message}`);
 
-          // Test Odoo server connectivity (HTTP)
-          const odooTest = await fetch('http://103.67.244.254:8069', {
-            method: 'GET',
-            timeout: 10000,
-          });
-          console.log('✅ Odoo server accessible:', odooTest.status);
-          networkResults.push(`Odoo Server: ✅ ${odooTest.status}`);
+            // Don't show intrusive alerts for network failures during app startup
+            // Users can use the Network Debug panel instead
+            console.log('💡 Use Network Debug panel in app for detailed connectivity testing');
+          }
 
-          // Test Fonnte API connectivity (HTTPS)
-          const fonnteTest = await fetch('https://api.fonnte.com/send', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': process.env.EXPO_PUBLIC_FONNTE_TOKEN || 'test-token'
-            },
-            body: JSON.stringify({
-              target: '081234567890',
-              message: 'test',
-              countryCode: '62'
-            }),
-            timeout: 10000,
-          });
-          console.log('✅ Fonnte API accessible:', fonnteTest.status, fonnteTest.statusText);
-          networkResults.push(`Fonnte API: ✅ ${fonnteTest.status} ${fonnteTest.statusText}`);
-        } catch (httpError) {
-          console.error('❌ Network connectivity test failed:', httpError.message);
-          console.error('Network error details:', httpError);
-          networkResults.push(`Network Error: ❌ ${httpError.message}`);
-        }
-
-        // Show network test results in development builds
-        if (process.env.EXPO_PUBLIC_DEBUG === 'true') {
-          setTimeout(() => {
-            Alert.alert(
-              'Network Connectivity Test',
-              networkResults.join('\n\n'),
-              [{ text: 'OK' }]
-            );
-          }, 3000); // Show after 3 seconds
+          // Show results only in console, not as popup during startup
+          if (networkResults.length > 0) {
+            console.log('Network Test Results:', networkResults.join(' | '));
+          }
+        } else {
+          console.log('📱 APK Build - Network tests disabled for faster startup');
         }
 
         // Wait for fonts to load

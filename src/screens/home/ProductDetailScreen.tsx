@@ -18,6 +18,7 @@ import { RouteProp } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/colors';
+import productService from '../../services/product/productService';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList, PromoStackParamList } from '../../navigation/types';
@@ -192,10 +193,9 @@ export default function ProductDetailScreen() {
         queryClient.prefetchQuery({
           queryKey: ['products', 'detail', productData.categ_id[0]],
           queryFn: async () => {
-            const productService = (await import('../../services/product/productService')).default;
-            return productService.getProducts({ 
-              category_id: productData.categ_id[0], 
-              limit: 10 
+            return productService.getProducts({
+              category_id: productData.categ_id[0],
+              limit: 10
             });
           },
           staleTime: 5 * 60 * 1000,

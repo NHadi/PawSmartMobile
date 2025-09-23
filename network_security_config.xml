@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow HTTP traffic to development server -->
+    <!-- HTTP cleartext allowed for development and staging servers -->
     <domain-config cleartextTrafficPermitted="true">
+        <!-- Odoo Server - Allow HTTP for APK builds -->
         <domain includeSubdomains="false">103.67.244.254</domain>
+        <!-- Local development -->
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+        <domain includeSubdomains="true">172.16.0.0/12</domain>
+        <!-- Development APIs -->
+        <domain includeSubdomains="true">httpbin.org</domain>
+        <domain includeSubdomains="true">api-dev.petnexus.com</domain>
+        <!-- Payment gateways sandbox -->
+        <domain includeSubdomains="true">bigflip.id</domain>
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
     </domain-config>
 
-    <!-- Development configuration - allow cleartext for all domains -->
+    <!-- HTTPS only for production services -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.fonnte.com</domain>
+        <domain includeSubdomains="true">webhook.site</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">facebook.com</domain>
+        <domain includeSubdomains="true">api.xendit.co</domain>
+        <domain includeSubdomains="true">api.petnexus.com</domain>
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Base config: Allow cleartext for APK compatibility with development servers -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
