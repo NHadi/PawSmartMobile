@@ -1,0 +1,94 @@
+{
+  "cli": {
+    "version": ">= 13.2.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",
+        "EXPO_PUBLIC_ODOO_DATABASE": "development",
+        "EXPO_PUBLIC_ODOO_USERNAME": "zakariali0705@gmail.com",
+        "EXPO_PUBLIC_ODOO_PASSWORD": "admin",
+        "EXPO_PUBLIC_ODOO_API_KEY": "bd598ce6e94176c354da8333ea381b854617175f",
+        "EAS_BUILD": "true",
+        "EXPO_PUBLIC_API_VERSION": "v1",
+        "EXPO_PUBLIC_XENDIT_SECRET_KEY": "xnd_development_msfP7kWOSLK5Yq1W765yVEYv33hTaMU7llz1z84PTQLeNOBmb0Xl5550owlh3W",
+        "EXPO_PUBLIC_XENDIT_PUBLIC_KEY": "xnd_public_development_fKdWUc1tI9wCWkP0u5QIOEL2yycIzd8WzO2S3s7NsvL6djBJZ2iXR6LPzgBeUhkx",
+        "EXPO_PUBLIC_XENDIT_WEBHOOK_URL": "https://webhook.site/182463e6-a64b-441a-8f69-92416f08145c",
+        "EXPO_PUBLIC_XENDIT_WEBHOOK_TOKEN": "RSIYNgN5N5hEp9etz2k3ukqhNepjL86dIuhqGfPzNT4JoQmX",
+        "EXPO_PUBLIC_DEBUG": "true",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "813145283633-m76ed93hla2i35nb7r3dfd7cgrjauh12.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "813145283633-7aroaegs4gb8gj4pa9nar776va9grnck.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "813145283633-c7gs0rsc79cas7dt23vu7b19m9hsue1p.apps.googleusercontent.com",
+        "EXPO_PUBLIC_FACEBOOK_APP_ID": "797841592820309",
+        "EXPO_PUBLIC_WHATSAPP_PROVIDER": "fonnte",
+        "EXPO_PUBLIC_FONNTE_TOKEN": "foUxAsfeYPs5CpBoTz6q"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk",
+        "resourceClass": "medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",
+        "EXPO_PUBLIC_ODOO_DATABASE": "development",
+        "EXPO_PUBLIC_ODOO_USERNAME": "zakariali0705@gmail.com",
+        "EXPO_PUBLIC_ODOO_PASSWORD": "admin",
+        "EXPO_PUBLIC_ODOO_API_KEY": "bd598ce6e94176c354da8333ea381b854617175f",
+        "EAS_BUILD": "true",
+        "EXPO_PUBLIC_API_VERSION": "v1",
+        "EXPO_PUBLIC_XENDIT_SECRET_KEY": "xnd_development_msfP7kWOSLK5Yq1W765yVEYv33hTaMU7llz1z84PTQLeNOBmb0Xl5550owlh3W",
+        "EXPO_PUBLIC_XENDIT_PUBLIC_KEY": "xnd_public_development_fKdWUc1tI9wCWkP0u5QIOEL2yycIzd8WzO2S3s7NsvL6djBJZ2iXR6LPzgBeUhkx",
+        "EXPO_PUBLIC_XENDIT_WEBHOOK_URL": "https://webhook.site/182463e6-a64b-441a-8f69-92416f08145c",
+        "EXPO_PUBLIC_XENDIT_WEBHOOK_TOKEN": "RSIYNgN5N5hEp9etz2k3ukqhNepjL86dIuhqGfPzNT4JoQmX",
+        "EXPO_PUBLIC_DEBUG": "true",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "813145283633-m76ed93hla2i35nb7r3dfd7cgrjauh12.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "813145283633-7aroaegs4gb8gj4pa9nar776va9grnck.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "813145283633-c7gs0rsc79cas7dt23vu7b19m9hsue1p.apps.googleusercontent.com",
+        "EXPO_PUBLIC_FACEBOOK_APP_ID": "797841592820309",
+        "EXPO_PUBLIC_WHATSAPP_PROVIDER": "fonnte",
+        "EXPO_PUBLIC_FONNTE_TOKEN": "foUxAsfeYPs5CpBoTz6q"
+      }
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",
+        "EXPO_PUBLIC_ODOO_DATABASE": "production",
+        "EXPO_PUBLIC_ODOO_USERNAME": "zakariali0705@gmail.com",
+        "EXPO_PUBLIC_ODOO_PASSWORD": "admin",
+        "EXPO_PUBLIC_ODOO_API_KEY": "bd598ce6e94176c354da8333ea381b854617175f",
+        "EAS_BUILD": "true",
+        "EXPO_PUBLIC_API_VERSION": "v1",
+        "EXPO_PUBLIC_XENDIT_SECRET_KEY": "xnd_production_YOUR_PRODUCTION_SECRET_KEY",
+        "EXPO_PUBLIC_XENDIT_PUBLIC_KEY": "xnd_public_production_YOUR_PRODUCTION_PUBLIC_KEY",
+        "EXPO_PUBLIC_XENDIT_WEBHOOK_URL": "https://your-production-webhook.com/webhook",
+        "EXPO_PUBLIC_XENDIT_WEBHOOK_TOKEN": "YOUR_PRODUCTION_WEBHOOK_TOKEN",
+        "EXPO_PUBLIC_DEBUG": "false",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "813145283633-m76ed93hla2i35nb7r3dfd7cgrjauh12.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "813145283633-7aroaegs4gb8gj4pa9nar776va9grnck.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "813145283633-c7gs0rsc79cas7dt23vu7b19m9hsue1p.apps.googleusercontent.com",
+        "EXPO_PUBLIC_FACEBOOK_APP_ID": "797841592820309",
+        "EXPO_PUBLIC_WHATSAPP_PROVIDER": "fonnte",
+        "EXPO_PUBLIC_FONNTE_TOKEN": "YOUR_PRODUCTION_FONNTE_TOKEN"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

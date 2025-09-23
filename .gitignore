@@ -1,0 +1,90 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Windows
+Thumbs.db
+desktop.ini
+nul
+
+# local env files
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# typescript
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Android/IntelliJ - Exclude entire android directory for local builds
+android/
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+
+# iOS - Exclude entire ios directory for local builds  
+ios/
+*.xcworkspace
+xcuserdata
+
+# Testing
+coverage/
+
+# Temporary files
+*.log
+tmp/
+temp/
+
+# Claude Code
+.claude/
+
+# EAS
+.easignore
+
+# Screenshots only (keep asset images)
+Snipaste_*

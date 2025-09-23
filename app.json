@@ -1,0 +1,108 @@
+{
+  "expo": {
+    "name": "PawSmart",
+    "slug": "pawsmartmobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/splash-icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#16A6D9"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "scheme": "petnexus",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pawsmartmobile.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLSchemes": [
+          "petnexus",
+          "com.googleusercontent.apps.813145283633-m76ed93hla2i35nb7r3dfd7cgrjauh12",
+          "fb797841592820309"
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "petnexus",
+            "CFBundleURLSchemes": [
+              "petnexus"
+            ]
+          },
+          {
+            "CFBundleURLName": "google",
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.813145283633-m76ed93hla2i35nb7r3dfd7cgrjauh12"
+            ]
+          },
+          {
+            "CFBundleURLName": "facebook",
+            "CFBundleURLSchemes": [
+              "fb797841592820309"
+            ]
+          }
+        ]
+      },
+      "scheme": "petnexus"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/splash-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.pawsmartmobile.app",
+      "allowBackup": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "*.petnexus.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "petnexus"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "fb797841592820309"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "facebookAppId": "797841592820309",
+    "facebookAutoLogAppEvents": false,
+    "facebookAdvertiserIDCollection": false,
+    "facebookScheme": "fb797841592820309",
+    "extra": {
+    },
+    "owner": "badamigroups"
+  }
+}
