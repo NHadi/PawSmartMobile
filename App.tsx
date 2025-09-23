@@ -10,7 +10,6 @@ import AppNavigator from './src/navigation/AppNavigator';
 import SplashScreen from './src/screens/SplashScreen';
 import { LoadingProvider } from './src/hooks/useLoading';
 import NetworkMonitor from './src/components/NetworkMonitor';
-import DebugPanel from './src/components/DebugPanel';
 import { usePoppinsFonts } from './src/utils/fontLoader';
 // Use optimized query client configuration
 import { queryClient } from './src/config/queryClient';
@@ -28,37 +27,6 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Optional network connectivity test for APK debugging
-        // Only run if explicitly enabled via environment variable
-        if (process.env.EXPO_PUBLIC_DEBUG === 'true' && process.env.EXPO_PUBLIC_TEST_NETWORK === 'true') {
-          console.log('🔍 Testing network connectivity (debug mode)...');
-
-          const networkResults = [];
-
-          try {
-            // Test only essential Odoo server connectivity
-            const odooTest = await fetch('http://103.67.244.254:8069/web/database/selector', {
-              method: 'GET',
-              timeout: 8000,
-            });
-            console.log('✅ Odoo server accessible:', odooTest.status);
-            networkResults.push(`Odoo Server: ✅ Connected (${odooTest.status})`);
-          } catch (networkError: any) {
-            console.warn('⚠️ Odoo connectivity test failed:', networkError.message);
-            networkResults.push(`Odoo Server: ⚠️ ${networkError.message}`);
-
-            // Don't show intrusive alerts for network failures during app startup
-            // Users can use the Network Debug panel instead
-            console.log('💡 Use Network Debug panel in app for detailed connectivity testing');
-          }
-
-          // Show results only in console, not as popup during startup
-          if (networkResults.length > 0) {
-            console.log('Network Test Results:', networkResults.join(' | '));
-          }
-        } else {
-          console.log('📱 APK Build - Network tests disabled for faster startup');
-        }
 
         // Wait for fonts to load
         if (!fontsLoaded && !fontError) {
@@ -131,7 +99,6 @@ export default function App() {
                   translucent={Platform.OS === 'android'}
                 />
                 <AppNavigator />
-                <DebugPanel />
               </LoadingProvider>
             </CartProvider>
           </AuthProvider>

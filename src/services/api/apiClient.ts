@@ -142,31 +142,14 @@ class ApiClient {
       } catch (error: any) {
         lastError = error;
 
-        // Log retry attempts for APK debugging
-        if (config.DEBUG || config.IS_EAS_BUILD) {
-          console.log(`API Request attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`, {
-            url: this.axiosInstance.defaults.baseURL,
-            error: error.message,
-            code: error.code,
-            status: error.response?.status,
-          });
-        }
 
         // Don't retry on certain status codes
         if (error.response?.status && [400, 401, 403, 404, 422].includes(error.response.status)) {
           throw error;
         }
 
-        // For APK builds, add specific handling for cleartext traffic errors
-        if (config.IS_EAS_BUILD && (error.code === 'NETWORK_ERROR' || error.message?.includes('cleartext'))) {
-          console.warn('APK Cleartext Traffic Error - Check network security config');
-        }
-
         if (attempt < MAX_RETRIES) {
           const delay = RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, attempt);
-          if (config.DEBUG || config.IS_EAS_BUILD) {
-            console.log(`Retrying in ${delay}ms...`);
-          }
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -300,64 +283,15 @@ class ApiClient {
         debugMessage += ` - Status: ${error.response.status}`;
       }
 
-      // Enhanced debug information for APK troubleshooting
-      if (config.DEBUG || config.IS_EAS_BUILD) {
-        let alertMessage = `Odoo API Error:\n\n`;
-        alertMessage += `Service: ${service}\n`;
-        alertMessage += `Method: ${method}\n`;
-        alertMessage += `Message: ${error.message}\n`;
-        alertMessage += `Code: ${error.code || 'Unknown'}\n`;
-        alertMessage += `Status: ${error.response?.status || 'N/A'}\n`;
-        alertMessage += `URL: ${this.axiosInstance.defaults.baseURL}\n`;
-        alertMessage += `EAS Build: ${config.IS_EAS_BUILD ? 'Yes' : 'No'}\n`;
-        alertMessage += `Production: ${config.IS_PRODUCTION ? 'Yes' : 'No'}\n`;
-
-        // Network-specific debugging for APK builds
-        if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
-          alertMessage += `\n🔍 APK Network Troubleshooting:\n`;
-          alertMessage += `• Check if Odoo server is accessible\n`;
-          alertMessage += `• Verify HTTP cleartext traffic is allowed\n`;
-          alertMessage += `• Confirm network security config is applied\n`;
-          alertMessage += `• Test with different network (WiFi/Mobile)\n`;
-        }
-
-        if (error.response?.data?.error) {
-          alertMessage += `\nOdoo Error: ${JSON.stringify(error.response.data.error)}\n`;
-        }
-
-        Alert.alert(
-          config.IS_EAS_BUILD ? 'APK Network Debug' : 'Odoo API Debug Info',
-          alertMessage,
-          [{ text: 'Copy Debug Info', onPress: () => {
-            // In a real app, you might want to copy to clipboard
-            console.log('Debug Info:', alertMessage);
-          }}, { text: 'OK' }]
-        );
-      }
 
       if (error.response?.data?.error) {
         const errorMessage = error.response.data.error.data?.message || error.response.data.error.message || 'JSON-RPC Error';
         throw new Error(`${errorMessage} (${debugMessage})`);
       }
 
-      // Enhanced network error handling for APK builds
+      // For network errors, provide more specific error message
       if (error.message?.includes('Network Error') || !error.response) {
-        let networkErrorMessage = '';
-
-        if (config.IS_EAS_BUILD) {
-          networkErrorMessage = `APK Network Connection Failed:\n\n`;
-          networkErrorMessage += `Server: ${this.axiosInstance.defaults.baseURL}\n`;
-          networkErrorMessage += `Error: ${error.message}\n\n`;
-          networkErrorMessage += `Troubleshooting:\n`;
-          networkErrorMessage += `• Ensure HTTP cleartext traffic is enabled\n`;
-          networkErrorMessage += `• Check network security configuration\n`;
-          networkErrorMessage += `• Verify server is accessible from your network\n`;
-          networkErrorMessage += `• Try switching between WiFi and mobile data`;
-        } else {
-          networkErrorMessage = `Server tidak tersedia - Periksa koneksi internet.\nURL: ${this.axiosInstance.defaults.baseURL}`;
-        }
-
-        throw new Error(networkErrorMessage);
+        throw new Error(`Server tidak tersedia - Periksa koneksi internet. URL: ${this.axiosInstance.defaults.baseURL}`);
       }
 
       throw new Error(`${error.message} (${debugMessage})`);
