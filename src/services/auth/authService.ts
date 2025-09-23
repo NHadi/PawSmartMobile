@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 import apiClient from '../api/apiClient';
 import { API_ENDPOINTS } from '../config/api.config';
 import whatsappService from '../whatsapp/whatsappService';
@@ -48,21 +49,36 @@ class AuthService {
       // Create user session
       return await this.createUserSession(userAuth);
     } catch (error: any) {
+      // Show debug alert in development mode for APK testing
+      if (config.DEBUG === 'true' || __DEV__) {
+        let debugMessage = `Authentication Error:\n\n`;
+        debugMessage += `Message: ${error.message}\n`;
+        debugMessage += `Code: ${error.code || 'Unknown'}\n`;
+        debugMessage += `Username: ${credentials.username}\n`;
+        debugMessage += `Database: ${credentials.database || config.ODOO.DATABASE}\n`;
+
+        Alert.alert(
+          'Login Debug Info',
+          debugMessage,
+          [{ text: 'OK' }]
+        );
+      }
+
       // Check if it's a network error
-      if (error.message?.includes('Network') || 
+      if (error.message?.includes('Network') ||
           error.message?.includes('fetch') ||
           error.message?.includes('ECONNREFUSED') ||
           error.message?.includes('ETIMEDOUT') ||
           error.code === 'NETWORK_ERROR') {
         throw new Error('Network connection failed. Please check your internet connection.');
       }
-      
+
       // For authentication errors, be specific
-      if (error.message?.includes('Invalid username') || 
+      if (error.message?.includes('Invalid username') ||
           error.message?.includes('Invalid password')) {
         throw new Error('Invalid username or password');
       }
-      
+
       throw new Error(error.message || 'Login failed');
     }
   }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import fonnteWhatsApp from '../services/whatsapp/fonnteWhatsApp';
+import apiClient from '../services/api/apiClient';
 import config from '../config/environment';
 
 const DebugPanel: React.FC = () => {
@@ -75,6 +76,43 @@ const DebugPanel: React.FC = () => {
     }
   };
 
+  const testOdooAPI = async () => {
+    try {
+      setTesting(true);
+
+      // Test basic Odoo authentication
+      const authResult = await apiClient.authenticateAdmin();
+
+      if (authResult && authResult.uid) {
+        // Test a simple Odoo API call
+        const testResult = await apiClient.odooExecute('res.users', 'search_read', [[['id', '=', authResult.uid]]], {
+          fields: ['name', 'login'],
+          limit: 1
+        });
+
+        Alert.alert(
+          'Odoo API Test Result',
+          `✅ Authentication successful!\n\nUID: ${authResult.uid}\nDatabase: ${authResult.database}\nUser: ${testResult?.[0]?.name || 'Unknown'}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Odoo API Test Result',
+          '❌ Authentication failed - no UID returned',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Odoo API Test Error',
+        `❌ Test failed:\n\n${error.message}`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setTesting(false);
+    }
+  };
+
   // Only show in debug mode
   if (config.DEBUG !== 'true' && !__DEV__) {
     return null;
@@ -104,9 +142,21 @@ const DebugPanel: React.FC = () => {
         </Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={[styles.button, testing && styles.buttonDisabled]}
+        onPress={testOdooAPI}
+        disabled={testing}
+      >
+        <Text style={styles.buttonText}>
+          {testing ? 'Testing...' : 'Test Odoo API'}
+        </Text>
+      </TouchableOpacity>
+
       <Text style={styles.info}>
         Debug Mode: {config.DEBUG}
-        {'\n'}Token: {config.WHATSAPP.FONNTE_TOKEN ? 'Configured' : 'Missing'}
+        {'\n'}Fonnte Token: {config.WHATSAPP.FONNTE_TOKEN ? 'OK' : 'Missing'}
+        {'\n'}Odoo URL: {config.ODOO.URL}
+        {'\n'}Odoo User: {config.ODOO.USERNAME ? 'OK' : 'Missing'}
       </Text>
     </View>
   );

@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 import { API_CONFIG } from '../config/api.config';
 import config from '../../config/environment';
 
@@ -188,25 +189,46 @@ class ApiClient {
     } catch (error: any) {
       // Enhanced error information for debugging
       let debugMessage = `API Error - Service: ${service}, Method: ${method}`;
-      
+
       if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
         debugMessage += ' - Network connection failed';
       }
-      
+
       if (error.response?.status) {
         debugMessage += ` - Status: ${error.response.status}`;
       }
-      
+
+      // Show debug alert in development mode for APK testing
+      if (config.DEBUG === 'true' || __DEV__) {
+        let alertMessage = `Odoo API Error:\n\n`;
+        alertMessage += `Service: ${service}\n`;
+        alertMessage += `Method: ${method}\n`;
+        alertMessage += `Message: ${error.message}\n`;
+        alertMessage += `Code: ${error.code || 'Unknown'}\n`;
+        alertMessage += `Status: ${error.response?.status || 'N/A'}\n`;
+        alertMessage += `URL: ${this.axiosInstance.defaults.baseURL}\n`;
+
+        if (error.response?.data?.error) {
+          alertMessage += `Odoo Error: ${JSON.stringify(error.response.data.error)}\n`;
+        }
+
+        Alert.alert(
+          'Odoo API Debug Info',
+          alertMessage,
+          [{ text: 'OK' }]
+        );
+      }
+
       if (error.response?.data?.error) {
         const errorMessage = error.response.data.error.data?.message || error.response.data.error.message || 'JSON-RPC Error';
         throw new Error(`${errorMessage} (${debugMessage})`);
       }
-      
+
       // For network errors, provide more specific error message
       if (error.message?.includes('Network Error') || !error.response) {
         throw new Error(`Server tidak tersedia - Periksa koneksi internet. URL: ${this.axiosInstance.defaults.baseURL}`);
       }
-      
+
       throw new Error(`${error.message} (${debugMessage})`);
     }
   }
