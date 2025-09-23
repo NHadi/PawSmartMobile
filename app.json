@@ -21,6 +21,16 @@
       "bundleIdentifier": "com.pawsmartmobile.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "103.67.244.254": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSExceptionMinimumTLSVersion": "1.0",
+              "NSExceptionRequiresForwardSecrecy": false
+            }
+          }
+        },
         "CFBundleURLSchemes": [
           "petnexus",
           "com.googleusercontent.apps.813145283633-m76ed93hla2i35nb7r3dfd7cgrjauh12",
@@ -56,6 +66,8 @@
       },
       "package": "com.pawsmartmobile.app",
       "allowBackup": false,
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": "./network_security_config.xml",
       "intentFilters": [
         {
           "action": "VIEW",
