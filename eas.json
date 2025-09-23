@@ -35,7 +35,8 @@
       },
       "android": {
         "buildType": "apk",
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "gradleCommand": ":app:assembleRelease"
       },
       "env": {
         "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",

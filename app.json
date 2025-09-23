@@ -67,7 +67,7 @@
       "package": "com.pawsmartmobile.app",
       "allowBackup": false,
       "usesCleartextTraffic": true,
-      "networkSecurityConfig": "./network_security_config.xml",
+      "networkSecurityConfig": "@xml/network_security_config",
       "intentFilters": [
         {
           "action": "VIEW",

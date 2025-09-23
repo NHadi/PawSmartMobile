@@ -27,6 +27,28 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
+        // Test HTTP connectivity for debugging
+        console.log('🔍 Testing HTTP connectivity...');
+
+        try {
+          // Test basic HTTP connectivity
+          const httpTest = await fetch('http://httpbin.org/get', {
+            method: 'GET',
+            timeout: 5000,
+          });
+          console.log('✅ HTTP test successful:', httpTest.status);
+
+          // Test Odoo server connectivity
+          const odooTest = await fetch('http://103.67.244.254:8069', {
+            method: 'GET',
+            timeout: 10000,
+          });
+          console.log('✅ Odoo server accessible:', odooTest.status);
+        } catch (httpError) {
+          console.error('❌ HTTP connectivity test failed:', httpError.message);
+          console.error('Network error details:', httpError);
+        }
+
         // Wait for fonts to load
         if (!fontsLoaded && !fontError) {
           return; // Still loading fonts
