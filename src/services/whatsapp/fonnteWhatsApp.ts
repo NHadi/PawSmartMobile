@@ -1,5 +1,6 @@
 import axios from 'axios';
 import config from '../../config/environment';
+import { Alert } from 'react-native';
 
 /**
  * Fonnte WhatsApp Integration
@@ -21,32 +22,78 @@ class FonnteWhatsApp {
    */
   async sendOTP(phoneNumber: string, otpCode: string): Promise<boolean> {
     try {
+      console.log('🔄 Fonnte: Attempting to send OTP to', phoneNumber);
+      console.log('🔄 Fonnte: API URL:', this.apiUrl);
+      console.log('🔄 Fonnte: Token configured:', !!this.token);
+
       const message = `*PawSmart - Kode OTP*\n\nKode OTP Anda: *${otpCode}*\n\nKode ini berlaku selama 5 menit.\nJangan bagikan kode ini kepada siapapun.\n\n_Abaikan pesan ini jika Anda tidak melakukan registrasi._`;
-      
+
+      const formattedPhone = this.formatPhoneNumber(phoneNumber);
+      console.log('🔄 Fonnte: Formatted phone:', formattedPhone);
+
+      const requestData = {
+        target: formattedPhone,
+        message: message,
+        countryCode: '62', // Indonesia
+      };
+
+      console.log('🔄 Fonnte: Request data:', requestData);
+
       const response = await axios.post(
         this.apiUrl,
-        {
-          target: this.formatPhoneNumber(phoneNumber),
-          message: message,
-          countryCode: '62', // Indonesia
-        },
+        requestData,
         {
           headers: {
             'Authorization': this.token,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 30000, // 30 second timeout
         }
       );
 
+      console.log('✅ Fonnte: Response status:', response.status);
+      console.log('✅ Fonnte: Response data:', response.data);
+
       if (response.data.status) {
-        console.log('Fonnte message sent successfully');
+        console.log('✅ Fonnte: Message sent successfully');
         return true;
       } else {
-        console.error('Fonnte error:', response.data.reason);
+        console.error('❌ Fonnte: API returned error:', response.data.reason);
         return false;
       }
     } catch (error: any) {
-      console.error('Fonnte API error:', error.message);
+      console.error('❌ Fonnte: Network/API error occurred');
+      console.error('❌ Fonnte: Error message:', error.message);
+      console.error('❌ Fonnte: Error code:', error.code);
+      console.error('❌ Fonnte: Error response:', error.response?.data);
+      console.error('❌ Fonnte: Error status:', error.response?.status);
+
+      // Show debug alert in development mode for APK testing
+      if (config.DEBUG === 'true' || __DEV__) {
+        let debugMessage = `Fonnte Error:\n\n`;
+        debugMessage += `Message: ${error.message}\n`;
+        debugMessage += `Code: ${error.code || 'Unknown'}\n`;
+        debugMessage += `Status: ${error.response?.status || 'N/A'}\n`;
+        debugMessage += `Response: ${JSON.stringify(error.response?.data || {})}\n`;
+        debugMessage += `URL: ${this.apiUrl}\n`;
+        debugMessage += `Token: ${!!this.token ? 'Configured' : 'Missing'}`;
+
+        Alert.alert(
+          'WhatsApp Debug Info',
+          debugMessage,
+          [{ text: 'OK' }]
+        );
+      }
+
+      // Additional network debugging
+      if (error.code === 'NETWORK_ERROR') {
+        console.error('❌ Fonnte: Network connectivity issue detected');
+      } else if (error.code === 'ECONNREFUSED') {
+        console.error('❌ Fonnte: Connection refused - possible firewall/security issue');
+      } else if (error.message?.includes('certificate')) {
+        console.error('❌ Fonnte: SSL certificate issue detected');
+      }
+
       return false;
     }
   }
