@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(22, 166, 217, 0.85)',
+    backgroundColor: '#FF6900',
   },
   headerSection: {
     paddingTop: Platform.OS === 'ios' ? 50 : 30,

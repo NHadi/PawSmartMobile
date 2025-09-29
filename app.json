@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "PawSmart",
-    "slug": "pawsmartmobile",
-    "version": "1.0.0",
+    "slug": "PawSmart",
+    "version": "0.0.3",
     "orientation": "portrait",
     "icon": "./assets/splash-icon.png",
     "userInterfaceStyle": "light",
@@ -125,9 +125,9 @@
     "facebookScheme": "fb797841592820309",
     "extra": {
       "eas": {
-        "projectId": "ed114fa0-7fdd-49bc-a930-a91244960a64"
+        "projectId": "a0335cb7-80c2-4a13-9b90-fca054367a9b"
       }
     },
-    "owner": "badamigroups"
+    "owner": "muksinnuri"
   }
 }

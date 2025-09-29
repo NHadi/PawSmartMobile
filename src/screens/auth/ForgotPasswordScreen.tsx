@@ -15,9 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthStackScreenProps } from '../../navigation/types';
-import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
-import { Spacing, BorderRadius } from '../../constants/spacing';
 import authService from '../../services/auth/authService';
 
 export default function ForgotPasswordScreen({ navigation }: AuthStackScreenProps<'ForgotPassword'>) {
@@ -163,7 +161,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(22, 166, 217, 0.85)',
+    backgroundColor: '#FF6900',
   },
   headerSection: {
     paddingTop: Platform.OS === 'ios' ? 50 : 30,

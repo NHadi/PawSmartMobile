@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 80,
-    backgroundColor: '#00BCD4',
+    backgroundColor: '#FF6900',
     position: 'relative',
     overflow: 'hidden',
   },

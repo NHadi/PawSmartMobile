@@ -9,9 +9,7 @@ import {
   ImageBackground,
   Text,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 import { Typography } from '../constants/typography';
 
 const { width, height } = Dimensions.get('window');
@@ -120,7 +118,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#FF6900',
   },
   backgroundImage: {
     flex: 1,
@@ -129,7 +127,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(22, 166, 217, 0.85)',
+    backgroundColor: '#FF6900',
   },
   contentContainer: {
     flex: 1,

@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   },
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(22, 166, 217, 0.85)',
+    backgroundColor: '#FF6900',
   },
   safeArea: {
     backgroundColor: 'transparent',
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
   },
   carouselOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(22, 166, 217, 0.85)',
+    backgroundColor: '#FF6900',
   },
   carouselTitle: {
     fontSize: Typography.fontSize.lg,
