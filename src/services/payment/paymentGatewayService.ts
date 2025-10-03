@@ -62,9 +62,12 @@ class PaymentGatewayService {
     let provider = preferredProvider;
 
     if (!provider) {
-      // Route QRIS and EWALLET to Xendit (supports these methods)
+      // Route QRIS to Flip (staging endpoint /big_sandbox_api/v3/pwf/bill)
+      // Route EWALLET to Xendit (supports e-wallet methods)
       // Route VIRTUAL_ACCOUNT to Flip (mobile-friendly bank transfer)
-      if (request.paymentMethod === 'QRIS' || request.paymentMethod === 'EWALLET') {
+      if (request.paymentMethod === 'QRIS') {
+        provider = 'FLIP'; // Use Flip staging for QRIS
+      } else if (request.paymentMethod === 'EWALLET') {
         provider = 'XENDIT';
       } else {
         provider = GATEWAY_CONFIG.PRIMARY_PROVIDER; // Flip for others
@@ -95,7 +98,28 @@ class PaymentGatewayService {
    */
   private async createFlipPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
     try {
-      if (request.paymentMethod === 'VIRTUAL_ACCOUNT') {
+      if (request.paymentMethod === 'QRIS') {
+        // Use Flip QRIS
+        const flipResponse = await flipPaymentGateway.createQRISPayment({
+          order_id: request.orderId,
+          amount: request.amount,
+          customer_name: request.customerName,
+          customer_email: request.customerEmail,
+          customer_phone: request.customerPhone,
+          description: request.description || `Payment for order ${request.orderId}`,
+        });
+
+        return {
+          provider: 'FLIP',
+          paymentId: flipResponse.qr_id,
+          status: this.mapFlipStatus(flipResponse.status),
+          paymentData: flipResponse,
+          qrString: flipResponse.qr_string,
+          amount: flipResponse.amount,
+          expiresAt: flipResponse.expires_at,
+          fees: this.calculateFlipFees(request.amount),
+        };
+      } else if (request.paymentMethod === 'VIRTUAL_ACCOUNT') {
         // Use mobile-friendly payment approach - show bank details in app
         const flipResponse = await flipPaymentGateway.createMobilePayment({
           orderId: request.orderId,
@@ -219,24 +243,14 @@ class PaymentGatewayService {
     try {
       switch (provider) {
         case 'FLIP':
-          // Check if it's a mobile payment ID (starts with 'FLIP') or bill ID (numeric)
-          if (paymentId.startsWith('FLIP')) {
-            // Mobile payment - these don't have real-time status checking
-            // Return pending status (user needs to manually confirm payment)
-            return {
-              isPaid: false,
-              status: 'PENDING',
-              paymentData: { mobile_payment: true, payment_id: paymentId },
-            };
-          } else {
-            // Bill payment - use normal status check
-            const flipStatus = await flipPaymentGateway.getBillStatus(parseInt(paymentId));
-            return {
-              isPaid: flipStatus.status === 'ACTIVE' && flipStatus.payment_id !== undefined,
-              status: flipStatus.status,
-              paymentData: flipStatus,
-            };
-          }
+          // For Flip QRIS payments, use getQRISStatus which handles both QRIS and bill status endpoints
+          // The method will check bill_payment.status for payment confirmation
+          const qrisStatus = await flipPaymentGateway.getQRISStatus(paymentId);
+          return {
+            isPaid: qrisStatus.status === 'PAID',
+            status: qrisStatus.status,
+            paymentData: qrisStatus,
+          };
 
         case 'XENDIT':
           // Use Xendit payment status check - determine payment type from payment ID or context
@@ -270,6 +284,24 @@ class PaymentGatewayService {
    */
   private calculateFlipFees(amount: number): number {
     return Math.round(amount * 0.003); // 0.3%
+  }
+
+  /**
+   * Map Flip status to unified status
+   */
+  private mapFlipStatus(flipStatus: string): 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED' {
+    switch (flipStatus) {
+      case 'PENDING':
+        return 'PENDING';
+      case 'PAID':
+        return 'PAID';
+      case 'EXPIRED':
+        return 'EXPIRED';
+      case 'CANCELLED':
+        return 'FAILED';
+      default:
+        return 'PENDING';
+    }
   }
 
   /**

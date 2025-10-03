@@ -20,6 +20,7 @@ import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
+import flipPaymentGateway from '../../services/payment/flipPaymentGateway';
 
 type PaymentRouteProp = RouteProp<HomeStackParamList, 'QRISPayment'>;
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'QRISPayment'>;
@@ -68,11 +69,13 @@ export default function QRISPaymentScreen() {
 
   const checkPaymentStatus = async () => {
     try {
-      if (!paymentData?.id) return;
+      if (!paymentData?.id && !paymentData?.qr_id) return;
 
-      // Determine provider and check status accordingly
-      const provider = paymentData.provider || 'XENDIT';
-      const status = await paymentGatewayService.getPaymentStatus(paymentData.id, provider);
+      // Determine provider and payment ID
+      const provider = paymentData.provider || 'FLIP'; // Default to FLIP (using staging endpoint)
+      const paymentId = paymentData.id || paymentData.qr_id; // Support both Xendit (id) and Flip (qr_id)
+
+      const status = await paymentGatewayService.getPaymentStatus(paymentId, provider);
 
       if (status.isPaid || status.status === 'PAID' || status.status === 'SUCCEEDED') {
         setPaymentStatus('success');
@@ -120,8 +123,9 @@ export default function QRISPaymentScreen() {
   };
 
   const handleCopyQR = () => {
-    if (paymentData?.qr_string) {
-      Clipboard.setString(paymentData.qr_string);
+    const qrString = paymentData?.qr_string || paymentData?.qrString;
+    if (qrString) {
+      Clipboard.setString(qrString);
       Alert.alert('Berhasil', 'QRIS code telah disalin');
     }
   };
@@ -140,6 +144,74 @@ export default function QRISPaymentScreen() {
           style: 'destructive',
           onPress: () => {
             navigation.navigate('Home' as any);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleTestPayment = async () => {
+    // Only for Flip provider in staging/development
+    if (paymentData?.provider !== 'FLIP') {
+      Alert.alert('Info', 'Test payment only available for Flip provider');
+      return;
+    }
+
+    // Use payment_url (direct payment page) instead of link_url
+    const paymentUrl = paymentData?.payment_url || paymentData?.link_url;
+
+    if (!paymentUrl) {
+      Alert.alert('Error', 'Payment URL not available');
+      return;
+    }
+
+    Alert.alert(
+      'Test Payment',
+      'Choose how to test payment:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Open Payment Page',
+          onPress: () => {
+            // Open Flip's payment page in browser
+            const { Linking } = require('react-native');
+            Linking.openURL(paymentUrl).catch((err: any) => {
+              console.error('Failed to open URL:', err);
+              Alert.alert('Error', 'Failed to open payment page');
+            });
+          },
+        },
+        {
+          text: 'Simulate Success',
+          onPress: async () => {
+            try {
+              if (!paymentData?.link_id || !paymentData?.bill_payment_id) {
+                Alert.alert('Error', 'Missing payment IDs for testing');
+                return;
+              }
+
+              console.log('Simulating payment success...');
+              const result = await flipPaymentGateway.simulatePaymentSuccess(
+                paymentData.link_id.toString(),
+                paymentData.bill_payment_id,
+                paymentData.amount
+              );
+
+              console.log('Simulation result:', result);
+
+              // Force check payment status after simulation
+              setTimeout(() => {
+                checkPaymentStatus();
+              }, 2000);
+
+              Alert.alert('Success', 'Payment simulation triggered. Checking status...');
+            } catch (error) {
+              console.error('Simulation error:', error);
+              Alert.alert('Error', 'Failed to simulate payment');
+            }
           },
         },
       ]
@@ -209,10 +281,10 @@ export default function QRISPaymentScreen() {
             <>
               {/* Payment Method Display */}
               <View style={styles.qrCodeContainer}>
-                {paymentData?.qr_string ? (
-                  // Show QR Code if available
+                {(paymentData?.qr_string || paymentData?.qrString) ? (
+                  // Show QR Code if available (support both Xendit qr_string and Flip qrString)
                   <QRCode
-                    value={paymentData.qr_string}
+                    value={paymentData.qr_string || paymentData.qrString}
                     size={220}
                     backgroundColor="white"
                     color="black"
@@ -307,30 +379,41 @@ export default function QRISPaymentScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom OK Button - Always show for testing */}
+      {/* Bottom Buttons */}
       <View style={styles.bottomSection}>
+        {/* Test Payment Button - Only for Flip provider */}
+        {paymentData?.provider === 'FLIP' && __DEV__ && (
           <TouchableOpacity
-            style={styles.okButton}
-            onPress={() => {
-              // Navigate to new universal success screen when OK is pressed
-              navigation.replace('UniversalSuccess', {
-                orderId: orderInfo?.orderId,
-                orderName: orderInfo?.orderName,
-                totalAmount: orderInfo?.totalAmount || 0,
-                transactionType: 'QRIS',
-                timestamp: new Date().toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }) + ' WIB',
-              });
-            }}
+            style={styles.testButton}
+            onPress={handleTestPayment}
           >
-            <Text style={styles.okButtonText}>OK</Text>
+            <MaterialIcons name="science" size={20} color={Colors.text.white} />
+            <Text style={styles.testButtonText}>Test Payment</Text>
           </TouchableOpacity>
-        </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.okButton}
+          onPress={() => {
+            // Navigate to new universal success screen when OK is pressed
+            navigation.replace('UniversalSuccess', {
+              orderId: orderInfo?.orderId,
+              orderName: orderInfo?.orderName,
+              totalAmount: orderInfo?.totalAmount || 0,
+              transactionType: 'QRIS',
+              timestamp: new Date().toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }) + ' WIB',
+            });
+          }}
+        >
+          <Text style={styles.okButtonText}>OK</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -544,6 +627,21 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border.light,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  testButton: {
+    backgroundColor: Colors.secondary.main,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  testButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.text.white,
   },
   okButton: {
     backgroundColor: Colors.primary.main,

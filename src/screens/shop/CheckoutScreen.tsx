@@ -516,6 +516,11 @@ export default function CheckoutScreen() {
             navigation.navigate('QRISPayment', {
               paymentData: {
                 id: paymentResponse.paymentId,
+                qr_id: paymentResponse.paymentData?.qr_id || paymentResponse.paymentId,
+                link_id: paymentResponse.paymentData?.link_id,
+                link_url: paymentResponse.paymentData?.link_url,
+                payment_url: paymentResponse.paymentData?.payment_url,
+                bill_payment_id: paymentResponse.paymentData?.bill_payment_id,
                 qr_string: paymentResponse.qrString,
                 amount: paymentResponse.amount,
                 expires_at: paymentResponse.expiresAt,

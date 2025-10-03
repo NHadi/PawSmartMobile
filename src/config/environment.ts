@@ -28,13 +28,13 @@ export const config = {
     FLIP: {
       SECRET_KEY: process.env.EXPO_PUBLIC_FLIP_SECRET_KEY ||
         (__DEV__
-          ? 'JDJ5JDEzJHc2ZjJxSE1LMWxvakRLcnFNUmdTTS5zcGt5M25LMm1QU2xUa1JSSDdtN05zTldVSGMyM2Y2'
-          : 'JDJ5JDEzJHc2ZjJxSE1LMWxvakRLcnFNUmdTTS5zcGt5M25LMm1QU2xUa1JSSDdtN05zTldVSGMyM2Y2'),
+          ? 'JDJ5JDEzJGN0ZEpkeDhSaTdYQVhITEJ5Tzl0dk9GdDlCWkNaQm4zeUdxVHVKenp4UDlvb0VkemxYd3dD'
+          : 'JDJ5JDEzJGN0ZEpkeDhSaTdYQVhITEJ5Tzl0dk9GdDlCWkNaQm4zeUdxVHVKenp4UDlvb0VkemxYd3dD'),
       VALIDATION_KEY: process.env.EXPO_PUBLIC_FLIP_VALIDATION_KEY ||
         (__DEV__
-          ? '$2y$13$RhsYkhdFRrRkqXRkNh70DuQ7fOoktAV3uJOERvHY8W/JYgwFKcP4u'
-          : '$2y$13$RhsYkhdFRrRkqXRkNh70DuQ7fOoktAV3uJOERvHY8W/JYgwFKcP4u'),
-      BASE_URL: 'https://bigflip.id/big_sandbox_api', // Sandbox endpoint for testing
+          ? '$2y$13$2dLwn5UGqX8Y4zKCiynWyenSYQMM0MohS3r.YRvTBUVVii4b3gH8m'
+          : '$2y$13$2dLwn5UGqX8Y4zKCiynWyenSYQMM0MohS3r.YRvTBUVVii4b3gH8m'),
+      BASE_URL: 'https://fm-dev-box.flip.id/', // Sandbox endpoint for testing
       WEBHOOK_URL: process.env.EXPO_PUBLIC_FLIP_WEBHOOK_URL ||
         (__DEV__
           ? 'https://webhook.site/#!/c8c8c8c8-1234-5678-90ab-cdef12345678' // Temporary webhook for testing

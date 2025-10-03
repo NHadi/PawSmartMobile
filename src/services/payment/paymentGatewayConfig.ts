@@ -67,6 +67,10 @@ export const PAYMENT_GATEWAY_CONFIG = {
   // Fee Structure by Provider (for display purposes)
   FEES: {
     FLIP: {
+      QRIS: {
+        percentage: 0.7, // 0.7% (standard QRIS fee)
+        fixed: 0,
+      },
       PAYMENT_LINK: {
         percentage: 0.3, // 0.3%
         fixed: 0,

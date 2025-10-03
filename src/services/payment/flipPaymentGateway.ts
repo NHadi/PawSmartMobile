@@ -2,9 +2,9 @@ import axios from 'axios';
 import base64 from 'base-64';
 import { PAYMENT_GATEWAY_CONFIG } from './paymentGatewayConfig';
 
-// Flip API Configuration
+// Flip API Configuration - Use staging for QRIS
 const FLIP_CONFIG = {
-  BASE_URL: 'https://bigflip.id/big_sandbox_api', // Use sandbox for testing
+  BASE_URL: PAYMENT_GATEWAY_CONFIG.FLIP.BASE_URL || 'https://fm-dev-box.flip.id/', // Staging endpoint for QRIS
   SECRET_KEY: PAYMENT_GATEWAY_CONFIG.FLIP.SECRET_KEY,
   VALIDATION_KEY: PAYMENT_GATEWAY_CONFIG.FLIP.VALIDATION_KEY,
 };
@@ -13,7 +13,7 @@ const FLIP_CONFIG = {
 const flipClient = axios.create({
   baseURL: FLIP_CONFIG.BASE_URL,
   headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Type': 'application/json', // Use JSON for v3 API
   },
   auth: {
     username: FLIP_CONFIG.SECRET_KEY,
@@ -79,7 +79,219 @@ export interface FlipBillResponse {
   payment_id?: number;
 }
 
+// Flip QRIS Interfaces
+export interface FlipQRISRequest {
+  amount: number;
+  order_id: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  description?: string;
+}
+
+export interface FlipQRISResponse {
+  qr_id: string;
+  link_id: number;
+  link_url: string;
+  payment_url: string;
+  qr_string: string;
+  amount: number;
+  order_id: string;
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED';
+  created_at: string;
+  expires_at: string;
+  paid_at?: string;
+  bill_payment_id?: string;
+}
+
 class FlipService {
+  /**
+   * Create QRIS Payment via PWF (Payment With Flip) - Staging Mode
+   * Endpoint: POST /big_api/v3/pwf/bill
+   */
+  async createQRISPayment(request: FlipQRISRequest): Promise<FlipQRISResponse> {
+    try {
+      console.log('Creating Flip QRIS payment (staging):', request);
+
+      // Set expiration to 30 minutes from now (standard for QRIS)
+      const expiredDate = new Date(Date.now() + 30 * 60 * 1000);
+      // Format: YYYY-MM-DD HH:mm:ss (include seconds)
+      const formattedExpiry = expiredDate.toISOString().replace('T', ' ').substring(0, 19);
+
+      // Prepare JSON payload according to Flip API v3 documentation
+      const payload = {
+        title: request.description || `Payment for order ${request.order_id}`,
+        type: 'single', // Lowercase as per documentation
+        step: 'direct_api', // Required for Direct API integration
+        amount: request.amount,
+        sender_name: request.customer_name,
+        sender_email: request.customer_email || 'noreply@example.com', // Required field
+        sender_bank: 'qris', // QRIS payment method
+        sender_bank_type: 'wallet_account', // Required for QRIS
+        reference_id: request.order_id, // Optional merchant reference
+        // expired_date: formattedExpiry, // Commented out - format validation issues, field is optional
+      };
+
+      console.log('Creating Flip QRIS payment with payload:', JSON.stringify(payload, null, 2));
+      console.log('Flip Auth (username):', FLIP_CONFIG.SECRET_KEY?.substring(0, 10) + '...');
+
+      // Use staging endpoint: big_api/v3/pwf/bill with JSON payload
+      const response = await flipClient.post('big_api/v3/pwf/bill', payload);
+
+      console.log('Flip QRIS payment created:', response.data);
+
+      // Transform response to match our expected format
+      const flipResponse = response.data;
+
+      // Extract QR code from nested structure: bill_payment.receiver_bank_account.qr_code_data
+      const qrCodeData = flipResponse.bill_payment?.receiver_bank_account?.qr_code_data ||
+                         flipResponse.qr_string ||
+                         flipResponse.qris_string ||
+                         '';
+
+      // Determine status based on bill_payment status
+      const billStatus = flipResponse.bill_payment?.status || flipResponse.status;
+      let paymentStatus: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' = 'PENDING';
+      if (billStatus === 'PENDING') paymentStatus = 'PENDING';
+      else if (billStatus === 'PAID' || billStatus === 'COMPLETED') paymentStatus = 'PAID';
+      else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
+      else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
+
+      return {
+        qr_id: flipResponse.link_id?.toString() || flipResponse.bill_payment?.id || flipResponse.id?.toString(),
+        link_id: flipResponse.link_id,
+        link_url: flipResponse.link_url || '',
+        payment_url: flipResponse.payment_url || '',
+        qr_string: qrCodeData,
+        amount: flipResponse.amount,
+        order_id: request.order_id,
+        status: paymentStatus,
+        created_at: flipResponse.created_from || new Date().toISOString(),
+        expires_at: flipResponse.expired_date || expiredDate.toISOString(),
+        bill_payment_id: flipResponse.bill_payment?.id,
+      };
+    } catch (error: any) {
+      console.error('Flip QRIS payment creation failed:', error.response?.data || error.message);
+      console.error('Flip request config:', error.config);
+      throw new Error(error.response?.data?.message || 'Failed to create Flip QRIS payment');
+    }
+  }
+
+  /**
+   * Simulate Payment Success (Staging/Testing Only)
+   * This simulates what would happen when Flip calls our backend webhook
+   *
+   * In production flow:
+   * 1. User pays via QRIS
+   * 2. Flip sends POST to our backend webhook with payment status
+   * 3. Backend updates order status
+   * 4. App polls and detects the status change
+   *
+   * For testing (without backend webhook):
+   * We simulate by just checking the bill status directly
+   */
+  async simulatePaymentSuccess(linkId: string, billPaymentId: string, amount: number): Promise<any> {
+    try {
+      console.log('='.repeat(50));
+      console.log('SIMULATING FLIP PAYMENT CALLBACK');
+      console.log('='.repeat(50));
+
+      // This is what Flip would send to our backend webhook
+      const callbackData = {
+        id: billPaymentId,
+        bill_link: `flip.id/pwf-sandbox/#${linkId}`,
+        bill_link_id: parseInt(linkId),
+        bill_title: "Test Payment",
+        reference_id: linkId,
+        sender_name: "Test User",
+        sender_bank: "qris",
+        sender_email: "test@example.com",
+        amount: amount,
+        status: "SUCCESSFUL",
+        sender_bank_type: "wallet_account",
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      };
+
+      console.log('Callback Data (what Flip would send):');
+      console.log(JSON.stringify(callbackData, null, 2));
+      console.log('Validation Token:', FLIP_CONFIG.VALIDATION_KEY?.substring(0, 20) + '...');
+      console.log('='.repeat(50));
+
+      // In a real scenario, this data would be sent to your backend webhook
+      // Backend would verify the token matches VALIDATION_KEY
+      // Backend would update order status in database
+      // App would poll and see the updated status
+
+      // For testing without backend:
+      // We just return the callback data so the app knows what happened
+      // The app will continue polling getQRISStatus() which should show PAID
+
+      console.log('NOTE: In production, this data would be sent to your webhook URL');
+      console.log('Webhook URL configured:', FLIP_CONFIG.WEBHOOK_URL);
+      console.log('='.repeat(50));
+
+      return {
+        simulated: true,
+        callback_data: callbackData,
+        message: 'In production, Flip would POST this data to your webhook URL. Your backend should verify the token and update order status.',
+        next_step: 'App will continue polling bill status to detect payment success'
+      };
+    } catch (error: any) {
+      console.error('Failed to simulate payment:', error.response?.data || error.message);
+      return { simulated: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get QRIS Payment Status - Staging Mode
+   * Endpoint: GET /big_api/v3/bill/{id}
+   */
+  async getQRISStatus(qrId: string): Promise<FlipQRISResponse> {
+    try {
+      console.log('Checking Flip QRIS status for ID:', qrId);
+
+      // Use staging bill status endpoint
+      const response = await flipClient.get(`big_api/v3/bill/${qrId}`);
+
+      console.log('Flip QRIS status retrieved:', response.data);
+
+      // Transform response to match our expected format
+      const flipResponse = response.data;
+
+      // Extract QR code from nested structure: bill_payment.receiver_bank_account.qr_code_data
+      const qrCodeData = flipResponse.bill_payment?.receiver_bank_account?.qr_code_data ||
+                         flipResponse.qr_string ||
+                         flipResponse.qris_string ||
+                         '';
+
+      // Determine status based on bill_payment status
+      const billStatus = flipResponse.bill_payment?.status || flipResponse.status;
+      let paymentStatus: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' = 'PENDING';
+      if (billStatus === 'PENDING') paymentStatus = 'PENDING';
+      else if (billStatus === 'PAID' || billStatus === 'COMPLETED') paymentStatus = 'PAID';
+      else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
+      else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
+
+      return {
+        qr_id: flipResponse.link_id?.toString() || flipResponse.bill_payment?.id || qrId,
+        link_id: flipResponse.link_id,
+        link_url: flipResponse.link_url || '',
+        payment_url: flipResponse.payment_url || '',
+        qr_string: qrCodeData,
+        amount: flipResponse.amount,
+        order_id: flipResponse.reference_id || flipResponse.title || '',
+        status: paymentStatus,
+        created_at: flipResponse.created_from || new Date().toISOString(),
+        expires_at: flipResponse.expired_date || new Date().toISOString(),
+        paid_at: billStatus === 'PAID' ? new Date().toISOString() : undefined,
+        bill_payment_id: flipResponse.bill_payment?.id,
+      };
+    } catch (error: any) {
+      console.error('Failed to get Flip QRIS status:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || 'Failed to get QRIS status');
+    }
+  }
+
   /**
    * Create Mobile-Friendly Payment Instructions
    * Instead of external redirect, provide payment details for in-app display
