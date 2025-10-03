@@ -62,13 +62,13 @@ class PaymentGatewayService {
     let provider = preferredProvider;
 
     if (!provider) {
-      // Route QRIS to Flip (staging endpoint /big_sandbox_api/v3/pwf/bill)
-      // Route EWALLET to Xendit (supports e-wallet methods)
+      // Route QRIS to Flip (staging endpoint /big_api/v3/pwf/bill)
+      // Route EWALLET to Flip (supports e-wallet methods via PWF API)
       // Route VIRTUAL_ACCOUNT to Flip (mobile-friendly bank transfer)
       if (request.paymentMethod === 'QRIS') {
         provider = 'FLIP'; // Use Flip staging for QRIS
       } else if (request.paymentMethod === 'EWALLET') {
-        provider = 'XENDIT';
+        provider = 'FLIP'; // Use Flip for E-Wallet
       } else {
         provider = GATEWAY_CONFIG.PRIMARY_PROVIDER; // Flip for others
       }
@@ -79,7 +79,7 @@ class PaymentGatewayService {
 
       switch (provider) {
         case 'FLIP':
-          return await this.createFlipPayment(request);
+          return await this.createFlipPayment(request, paymentOptions);
 
         case 'XENDIT':
           return await this.createXenditPayment(request, paymentOptions);
@@ -96,7 +96,7 @@ class PaymentGatewayService {
   /**
    * Create payment using Flip
    */
-  private async createFlipPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
+  private async createFlipPayment(request: UnifiedPaymentRequest, paymentOptions?: any): Promise<UnifiedPaymentResponse> {
     try {
       if (request.paymentMethod === 'QRIS') {
         // Use Flip QRIS
@@ -120,25 +120,48 @@ class PaymentGatewayService {
           fees: this.calculateFlipFees(request.amount),
         };
       } else if (request.paymentMethod === 'VIRTUAL_ACCOUNT') {
-        // Use mobile-friendly payment approach - show bank details in app
-        const flipResponse = await flipPaymentGateway.createMobilePayment({
-          orderId: request.orderId,
+        // Use Flip Virtual Account
+        const flipResponse = await flipPaymentGateway.createVAPayment({
+          order_id: request.orderId,
           amount: request.amount,
-          customerName: request.customerName,
-          customerEmail: request.customerEmail,
-          customerPhone: request.customerPhone,
+          customer_name: request.customerName,
+          customer_email: request.customerEmail,
+          customer_phone: request.customerPhone,
           description: request.description || `Payment for order ${request.orderId}`,
+          bank_code: paymentOptions?.bankCode || 'bca', // Default to BCA if not specified
         });
 
         return {
           provider: 'FLIP',
-          paymentId: flipResponse.paymentId,
-          status: 'PENDING',
+          paymentId: flipResponse.va_id,
+          status: this.mapFlipStatus(flipResponse.status),
           paymentData: flipResponse,
-          accountNumber: flipResponse.bankDetails.accountNumber,
-          bankCode: 'MANDIRI',
+          accountNumber: flipResponse.va_number,
+          bankCode: flipResponse.bank_code.toUpperCase(),
           amount: flipResponse.amount,
-          expiresAt: flipResponse.expiresAt,
+          expiresAt: flipResponse.expires_at,
+          fees: this.calculateFlipFees(request.amount),
+        };
+      } else if (request.paymentMethod === 'EWALLET') {
+        // Use Flip E-Wallet
+        const flipResponse = await flipPaymentGateway.createEwalletPayment({
+          order_id: request.orderId,
+          amount: request.amount,
+          customer_name: request.customerName,
+          customer_email: request.customerEmail,
+          customer_phone: request.customerPhone,
+          description: request.description || `Payment for order ${request.orderId}`,
+          ewallet_code: paymentOptions?.channelCode || 'shopeepay_app', // E-wallet channel code
+        });
+
+        return {
+          provider: 'FLIP',
+          paymentId: flipResponse.ewallet_id,
+          status: this.mapFlipStatus(flipResponse.status),
+          paymentData: flipResponse,
+          paymentUrl: flipResponse.payment_url,
+          amount: flipResponse.amount,
+          expiresAt: flipResponse.expires_at,
           fees: this.calculateFlipFees(request.amount),
         };
       } else {
@@ -243,13 +266,48 @@ class PaymentGatewayService {
     try {
       switch (provider) {
         case 'FLIP':
-          // For Flip QRIS payments, use getQRISStatus which handles both QRIS and bill status endpoints
-          // The method will check bill_payment.status for payment confirmation
-          const qrisStatus = await flipPaymentGateway.getQRISStatus(paymentId);
+          // Try to determine if it's QRIS, VA, or E-Wallet payment
+          // All use the same getStatus endpoint, check in order
+          try {
+            // Check as QRIS first (has qr_string)
+            const qrisStatus = await flipPaymentGateway.getQRISStatus(paymentId);
+            if (qrisStatus.qr_string) {
+              return {
+                isPaid: qrisStatus.status === 'PAID',
+                status: qrisStatus.status,
+                paymentData: qrisStatus,
+              };
+            }
+          } catch (qrisError: any) {
+            // Silently handle - not a QRIS payment or payment not found
+            if (qrisError.message !== 'PAYMENT_NOT_FOUND') {
+              // Only log non-404 errors
+            }
+          }
+
+          try {
+            // Check as VA (has va_number)
+            const vaStatus = await flipPaymentGateway.getVAStatus(paymentId);
+            if (vaStatus.va_number) {
+              return {
+                isPaid: vaStatus.status === 'PAID',
+                status: vaStatus.status,
+                paymentData: vaStatus,
+              };
+            }
+          } catch (vaError: any) {
+            // Silently handle - not a VA payment
+            if (vaError.message !== 'PAYMENT_NOT_FOUND') {
+              // Only log non-404 errors
+            }
+          }
+
+          // Check as E-Wallet (has ewallet_code)
+          const ewalletStatus = await flipPaymentGateway.getEwalletStatus(paymentId);
           return {
-            isPaid: qrisStatus.status === 'PAID',
-            status: qrisStatus.status,
-            paymentData: qrisStatus,
+            isPaid: ewalletStatus.status === 'PAID',
+            status: ewalletStatus.status,
+            paymentData: ewalletStatus,
           };
 
         case 'XENDIT':
@@ -269,8 +327,17 @@ class PaymentGatewayService {
         default:
           throw new Error(`Unsupported provider for status check: ${provider}`);
       }
-    } catch (error) {
-      console.error(`Failed to get payment status from ${provider}:`, error);
+    } catch (error: any) {
+      // Silently handle PAYMENT_NOT_FOUND - payment is still pending
+      if (error.message === 'PAYMENT_NOT_FOUND') {
+        return {
+          isPaid: false,
+          status: 'PENDING',
+        };
+      }
+
+      // Log other errors
+      console.error(`Failed to get payment status from ${provider}:`, error.message);
       return {
         isPaid: false,
         status: 'ERROR',

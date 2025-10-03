@@ -71,6 +71,14 @@ export const PAYMENT_GATEWAY_CONFIG = {
         percentage: 0.7, // 0.7% (standard QRIS fee)
         fixed: 0,
       },
+      VIRTUAL_ACCOUNT: {
+        percentage: 0, // No percentage fee
+        fixed: 4000, // Rp 4,000 per transaction
+      },
+      EWALLET: {
+        percentage: 0.7, // 0.7% (same as QRIS for e-wallet)
+        fixed: 0,
+      },
       PAYMENT_LINK: {
         percentage: 0.3, // 0.3%
         fixed: 0,

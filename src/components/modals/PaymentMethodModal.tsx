@@ -47,35 +47,35 @@ const paymentMethods = {
       name: 'OVO',
       type: 'EWALLET' as const,
       icon: require('../../../assets/icons/payments/ovo.png'),
-      channelCode: 'ID_OVO',
+      channelCode: 'ovo', // Flip: push notification to OVO app
     },
     {
       id: 'gopay',
       name: 'Gopay',
       type: 'EWALLET' as const,
       icon: require('../../../assets/icons/payments/gopay.png'),
-      channelCode: 'ID_GOPAY',
+      channelCode: 'gopay', // Flip e-wallet code (verify this)
     },
     {
       id: 'shopeepay',
       name: 'Shopee Pay',
       type: 'EWALLET' as const,
       icon: require('../../../assets/icons/payments/shopepay.png'),
-      channelCode: 'ID_SHOPEEPAY',
+      channelCode: 'shopeepay_app', // Flip: jump to ShopeePay app
     },
     {
       id: 'linkaja',
       name: 'Link Aja',
       type: 'EWALLET' as const,
       icon: require('../../../assets/icons/payments/linkaja.png'),
-      channelCode: 'ID_LINKAJA',
+      channelCode: 'linkaja', // Flip: redirect to LinkAja webcheckout page
     },
     {
       id: 'dana',
       name: 'Dana',
       type: 'EWALLET' as const,
       icon: require('../../../assets/icons/payments/dana.png'),
-      channelCode: 'ID_DANA',
+      channelCode: 'dana', // Flip: redirect to Dana cashier page
     },
   ],
   virtualAccount: [
@@ -84,7 +84,14 @@ const paymentMethods = {
       name: 'BSI VA',
       type: 'VIRTUAL_ACCOUNT' as const,
       icon: require('../../../assets/icons/payments/bsi.png'),
-      bankCode: 'BSI',
+      bankCode: 'BSM', // BSI is now BSM (Bank Syariah Mandiri) in Flip's system
+    },
+    {
+      id: 'bca',
+      name: 'BCA VA',
+      type: 'VIRTUAL_ACCOUNT' as const,
+      icon: require('../../../assets/icons/payments/bca.png'),
+      bankCode: 'BCA',
     },
     {
       id: 'bri',
@@ -107,13 +114,28 @@ const paymentMethods = {
       icon: require('../../../assets/icons/payments/mandiri.png'),
       bankCode: 'MANDIRI',
     },
-    {
-      id: 'bca',
-      name: 'BCA VA',
-      type: 'VIRTUAL_ACCOUNT' as const,
-      icon: require('../../../assets/icons/payments/bca.png'),
-      bankCode: 'BCA',
-    },
+    // Add more supported banks: permata, bsm, cimb
+    // {
+    //   id: 'permata',
+    //   name: 'Permata VA',
+    //   type: 'VIRTUAL_ACCOUNT' as const,
+    //   icon: require('../../../assets/icons/payments/permata.png'),
+    //   bankCode: 'PERMATA',
+    // },
+    // {
+    //   id: 'bsm',
+    //   name: 'BSM VA',
+    //   type: 'VIRTUAL_ACCOUNT' as const,
+    //   icon: require('../../../assets/icons/payments/bsm.png'),
+    //   bankCode: 'BSM',
+    // },
+    // {
+    //   id: 'cimb',
+    //   name: 'CIMB VA',
+    //   type: 'VIRTUAL_ACCOUNT' as const,
+    //   icon: require('../../../assets/icons/payments/cimb.png'),
+    //   bankCode: 'CIMB',
+    // },
   ],
 };
 

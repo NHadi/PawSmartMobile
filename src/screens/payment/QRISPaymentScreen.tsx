@@ -50,10 +50,9 @@ export default function QRISPaymentScreen() {
       });
     }, 1000);
 
-    // Check payment status every 5 seconds
-    statusCheckRef.current = setInterval(() => {
-      checkPaymentStatus();
-    }, 5000);
+    // Removed automatic payment status checking
+    // Status will only be checked when user clicks "Test Payment" or manually triggers it
+    // This avoids unnecessary API calls and errors when payment hasn't been made yet
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -381,7 +380,22 @@ export default function QRISPaymentScreen() {
 
       {/* Bottom Buttons */}
       <View style={styles.bottomSection}>
-        {/* Test Payment Button - Only for Flip provider */}
+        {/* Manual Check Status Button */}
+        <TouchableOpacity
+          style={styles.checkStatusButton}
+          onPress={async () => {
+            setPaymentStatus('checking');
+            await checkPaymentStatus();
+            if (paymentStatus === 'pending') {
+              Alert.alert('Info', 'Pembayaran belum diterima. Silakan coba lagi.');
+            }
+          }}
+        >
+          <MaterialIcons name="refresh" size={20} color={Colors.primary.main} />
+          <Text style={styles.checkStatusButtonText}>Cek Status Pembayaran</Text>
+        </TouchableOpacity>
+
+        {/* Test Payment Button - Only for Flip provider in dev mode */}
         {paymentData?.provider === 'FLIP' && __DEV__ && (
           <TouchableOpacity
             style={styles.testButton}
@@ -628,6 +642,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
     gap: Spacing.sm,
+  },
+  checkStatusButton: {
+    backgroundColor: Colors.background.secondary,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary.main,
+  },
+  checkStatusButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.primary.main,
   },
   testButton: {
     backgroundColor: Colors.secondary.main,

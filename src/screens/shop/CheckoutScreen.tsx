@@ -532,33 +532,67 @@ export default function CheckoutScreen() {
             break;
 
           case 'EWALLET':
-            navigation.navigate('EwalletPayment', {
-              paymentData: {
-                id: paymentResponse.paymentId,
-                actions: {
-                  mobile_web_checkout_url: paymentResponse.paymentUrl,
+            // Check if using Flip or Xendit
+            if (paymentResponse.provider === 'FLIP') {
+              navigation.navigate('EwalletPayment', {
+                paymentData: {
+                  id: paymentResponse.paymentId,
+                  ewallet_id: paymentResponse.paymentData?.ewallet_id || paymentResponse.paymentId,
+                  link_id: paymentResponse.paymentData?.link_id,
+                  link_url: paymentResponse.paymentData?.link_url,
+                  payment_url: paymentResponse.paymentData?.payment_url || paymentResponse.paymentUrl,
+                  bill_payment_id: paymentResponse.paymentData?.bill_payment_id,
+                  ewallet_code: paymentResponse.paymentData?.ewallet_code,
+                  ewallet_name: paymentResponse.paymentData?.ewallet_name,
+                  amount: paymentResponse.amount,
+                  expires_at: paymentResponse.expiresAt,
+                  status: paymentResponse.status,
+                  provider: paymentResponse.provider,
+                  selectedChannelCode: method.channelCode,
+                  selectedMethod: method,
                 },
-                charge_amount: paymentResponse.amount,
-                status: paymentResponse.status,
-                provider: paymentResponse.provider,
-                selectedChannelCode: method.channelCode,
-                selectedMethod: method,
-                // Include the full Xendit response for debugging
-                ...paymentResponse.paymentData,
-              },
-              orderInfo: orderInfo,
-              paymentMethod: method,
-            } as any);
+                orderInfo: orderInfo,
+                paymentMethod: method,
+              } as any);
+            } else {
+              // Xendit E-Wallet
+              navigation.navigate('EwalletPayment', {
+                paymentData: {
+                  id: paymentResponse.paymentId,
+                  actions: {
+                    mobile_web_checkout_url: paymentResponse.paymentUrl,
+                  },
+                  charge_amount: paymentResponse.amount,
+                  status: paymentResponse.status,
+                  provider: paymentResponse.provider,
+                  selectedChannelCode: method.channelCode,
+                  selectedMethod: method,
+                  // Include the full Xendit response for debugging
+                  ...paymentResponse.paymentData,
+                },
+                orderInfo: orderInfo,
+                paymentMethod: method,
+              } as any);
+            }
             break;
 
           case 'VIRTUAL_ACCOUNT':
             navigation.navigate('VirtualAccountPayment', {
               paymentData: {
                 id: paymentResponse.paymentId,
+                va_id: paymentResponse.paymentData?.va_id || paymentResponse.paymentId,
+                link_id: paymentResponse.paymentData?.link_id,
+                link_url: paymentResponse.paymentData?.link_url,
+                payment_url: paymentResponse.paymentData?.payment_url,
+                bill_payment_id: paymentResponse.paymentData?.bill_payment_id,
                 account_number: paymentResponse.accountNumber,
+                va_number: paymentResponse.accountNumber,
                 bank_code: paymentResponse.bankCode,
+                bank_name: paymentResponse.paymentData?.bank_name,
                 expected_amount: paymentResponse.amount,
+                amount: paymentResponse.amount,
                 expiration_date: paymentResponse.expiresAt,
+                expires_at: paymentResponse.expiresAt,
                 status: paymentResponse.status,
                 provider: paymentResponse.provider,
               },

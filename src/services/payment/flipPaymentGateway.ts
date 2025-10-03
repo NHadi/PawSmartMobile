@@ -104,6 +104,62 @@ export interface FlipQRISResponse {
   bill_payment_id?: string;
 }
 
+// Flip Virtual Account Interfaces
+export interface FlipVARequest {
+  amount: number;
+  order_id: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  description?: string;
+  bank_code: string; // bca, mandiri, bni, bri, permata, cimb, bsm
+  customized_va_unique_numbers?: string; // Custom VA number (7-9 digits)
+}
+
+export interface FlipVAResponse {
+  va_id: string;
+  link_id: number;
+  link_url: string;
+  payment_url: string;
+  va_number: string;
+  bank_code: string;
+  bank_name: string;
+  amount: number;
+  order_id: string;
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED';
+  created_at: string;
+  expires_at: string;
+  paid_at?: string;
+  bill_payment_id?: string;
+}
+
+// Flip E-Wallet Interfaces
+export interface FlipEwalletRequest {
+  amount: number;
+  order_id: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  description?: string;
+  ewallet_code: string; // shopeepay_app, ovo_app, dana_app, gopay_app, linkaja_app
+}
+
+export interface FlipEwalletResponse {
+  ewallet_id: string;
+  link_id: number;
+  link_url: string;
+  payment_url: string;
+  ewallet_code: string;
+  ewallet_name: string;
+  amount: number;
+  order_id: string;
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED';
+  created_at: string;
+  expires_at: string;
+  paid_at?: string;
+  bill_payment_id?: string;
+}
+
 class FlipService {
   /**
    * Create QRIS Payment via PWF (Payment With Flip) - Staging Mode
@@ -248,12 +304,8 @@ class FlipService {
    */
   async getQRISStatus(qrId: string): Promise<FlipQRISResponse> {
     try {
-      console.log('Checking Flip QRIS status for ID:', qrId);
-
       // Use staging bill status endpoint
       const response = await flipClient.get(`big_api/v3/bill/${qrId}`);
-
-      console.log('Flip QRIS status retrieved:', response.data);
 
       // Transform response to match our expected format
       const flipResponse = response.data;
@@ -287,8 +339,290 @@ class FlipService {
         bill_payment_id: flipResponse.bill_payment?.id,
       };
     } catch (error: any) {
-      console.error('Failed to get Flip QRIS status:', error.response?.data || error.message);
+      // Silently handle 404 - payment might still be pending
+      if (error.response?.status === 404) {
+        throw new Error('PAYMENT_NOT_FOUND');
+      }
       throw new Error(error.response?.data?.message || 'Failed to get QRIS status');
+    }
+  }
+
+  /**
+   * Create Virtual Account Payment via PWF (Payment With Flip) - Staging Mode
+   * Endpoint: POST /big_api/v3/pwf/bill
+   */
+  async createVAPayment(request: FlipVARequest): Promise<FlipVAResponse> {
+    try {
+      console.log('Creating Flip VA payment (staging):', request);
+
+      // Set expiration to 24 hours from now (standard for VA)
+      const expiredDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // Prepare JSON payload according to Flip API v3 documentation
+      const payload: any = {
+        title: request.description || `Payment for order ${request.order_id}`,
+        type: 'single', // Lowercase as per documentation
+        step: 'direct_api', // Required for Direct API integration
+        amount: request.amount,
+        sender_name: request.customer_name,
+        sender_email: request.customer_email || 'noreply@example.com', // Required field
+        sender_bank: request.bank_code.toLowerCase(), // Bank code must be lowercase (bca, mandiri, bsi, etc.)
+        sender_bank_type: 'virtual_account', // VA payment type
+        reference_id: request.order_id, // Optional merchant reference
+        // expired_date: formattedExpiry, // Commented out - optional field
+      };
+
+      // Add custom VA number if provided
+      if (request.customized_va_unique_numbers) {
+        payload.customized_va_unique_numbers = request.customized_va_unique_numbers;
+      }
+
+      console.log('Creating Flip VA payment with payload:', JSON.stringify(payload, null, 2));
+      console.log('Flip Auth (username):', FLIP_CONFIG.SECRET_KEY?.substring(0, 10) + '...');
+
+      // Use staging endpoint: big_api/v3/pwf/bill with JSON payload
+      const response = await flipClient.post('big_api/v3/pwf/bill', payload);
+
+      console.log('Flip VA payment created:', response.data);
+
+      // Transform response to match our expected format
+      const flipResponse = response.data;
+
+      // Extract VA number from nested structure: bill_payment.receiver_bank_account.account_number
+      const vaNumber = flipResponse.bill_payment?.receiver_bank_account?.account_number || '';
+      const bankCode = flipResponse.bill_payment?.receiver_bank_account?.bank_code || request.bank_code;
+
+      // Determine status based on bill_payment status
+      const billStatus = flipResponse.bill_payment?.status || flipResponse.status;
+      let paymentStatus: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' = 'PENDING';
+      if (billStatus === 'PENDING') paymentStatus = 'PENDING';
+      else if (billStatus === 'PAID' || billStatus === 'COMPLETED') paymentStatus = 'PAID';
+      else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
+      else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
+
+      // Map bank code to bank name
+      const bankNames: Record<string, string> = {
+        bca: 'BCA',
+        mandiri: 'Bank Mandiri',
+        bni: 'BNI',
+        bri: 'BRI',
+        permata: 'Bank Permata',
+        cimb: 'CIMB Niaga',
+        bsm: 'Bank Syariah Mandiri',
+        bsi: 'Bank Syariah Indonesia',
+      };
+
+      return {
+        va_id: flipResponse.link_id?.toString() || flipResponse.bill_payment?.id || flipResponse.id?.toString(),
+        link_id: flipResponse.link_id,
+        link_url: flipResponse.link_url || '',
+        payment_url: flipResponse.payment_url || '',
+        va_number: vaNumber,
+        bank_code: bankCode,
+        bank_name: bankNames[bankCode.toLowerCase()] || bankCode.toUpperCase(),
+        amount: flipResponse.amount,
+        order_id: request.order_id,
+        status: paymentStatus,
+        created_at: flipResponse.created_from || new Date().toISOString(),
+        expires_at: flipResponse.expired_date || expiredDate.toISOString(),
+        bill_payment_id: flipResponse.bill_payment?.id,
+      };
+    } catch (error: any) {
+      console.error('Flip VA payment creation failed:', error.response?.data || error.message);
+      console.error('Flip request config:', error.config);
+      throw new Error(error.response?.data?.message || 'Failed to create Flip VA payment');
+    }
+  }
+
+  /**
+   * Get Virtual Account Payment Status - Staging Mode
+   * Endpoint: GET /big_api/v3/bill/{id}
+   */
+  async getVAStatus(vaId: string): Promise<FlipVAResponse> {
+    try {
+      // Use staging bill status endpoint
+      const response = await flipClient.get(`big_api/v3/bill/${vaId}`);
+
+      // Transform response to match our expected format
+      const flipResponse = response.data;
+
+      // Extract VA number from nested structure
+      const vaNumber = flipResponse.bill_payment?.receiver_bank_account?.account_number || '';
+      const bankCode = flipResponse.bill_payment?.receiver_bank_account?.bank_code || '';
+
+      // Determine status based on bill_payment status
+      const billStatus = flipResponse.bill_payment?.status || flipResponse.status;
+      let paymentStatus: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' = 'PENDING';
+      if (billStatus === 'PENDING') paymentStatus = 'PENDING';
+      else if (billStatus === 'PAID' || billStatus === 'COMPLETED') paymentStatus = 'PAID';
+      else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
+      else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
+
+      // Map bank code to bank name
+      const bankNames: Record<string, string> = {
+        bca: 'BCA',
+        mandiri: 'Bank Mandiri',
+        bni: 'BNI',
+        bri: 'BRI',
+        permata: 'Bank Permata',
+        cimb: 'CIMB Niaga',
+        bsm: 'Bank Syariah Mandiri',
+        bsi: 'Bank Syariah Indonesia',
+      };
+
+      return {
+        va_id: flipResponse.link_id?.toString() || flipResponse.bill_payment?.id || vaId,
+        link_id: flipResponse.link_id,
+        link_url: flipResponse.link_url || '',
+        payment_url: flipResponse.payment_url || '',
+        va_number: vaNumber,
+        bank_code: bankCode,
+        bank_name: bankNames[bankCode.toLowerCase()] || bankCode.toUpperCase(),
+        amount: flipResponse.amount,
+        order_id: flipResponse.reference_id || flipResponse.title || '',
+        status: paymentStatus,
+        created_at: flipResponse.created_from || new Date().toISOString(),
+        expires_at: flipResponse.expired_date || new Date().toISOString(),
+        paid_at: billStatus === 'PAID' ? new Date().toISOString() : undefined,
+        bill_payment_id: flipResponse.bill_payment?.id,
+      };
+    } catch (error: any) {
+      // Silently handle 404 - payment might still be pending
+      if (error.response?.status === 404) {
+        throw new Error('PAYMENT_NOT_FOUND');
+      }
+      throw new Error(error.response?.data?.message || 'Failed to get VA status');
+    }
+  }
+
+  /**
+   * Create E-Wallet Payment via PWF (Payment With Flip) - Staging Mode
+   * Endpoint: POST /big_api/v3/pwf/bill
+   */
+  async createEwalletPayment(request: FlipEwalletRequest): Promise<FlipEwalletResponse> {
+    try {
+      console.log('Creating Flip E-Wallet payment (staging):', request);
+
+      // Set expiration to 60 minutes from now (standard for e-wallet)
+      const expiredDate = new Date(Date.now() + 60 * 60 * 1000);
+
+      // Prepare JSON payload according to Flip API v3 documentation
+      const payload = {
+        title: request.description || `Payment for order ${request.order_id}`,
+        type: 'single', // Lowercase as per documentation
+        step: 'direct_api', // Required for Direct API integration
+        amount: request.amount,
+        sender_name: request.customer_name,
+        sender_email: request.customer_email || 'noreply@example.com', // Required field
+        sender_bank: request.ewallet_code, // E-wallet code (shopeepay_app, ovo_app, dana_app, gopay_app, linkaja_app)
+        sender_bank_type: 'wallet_account', // E-wallet payment type
+        reference_id: request.order_id, // Optional merchant reference
+      };
+
+      console.log('Creating Flip E-Wallet payment with payload:', JSON.stringify(payload, null, 2));
+      console.log('Flip Auth (username):', FLIP_CONFIG.SECRET_KEY?.substring(0, 10) + '...');
+
+      // Use staging endpoint: big_api/v3/pwf/bill with JSON payload
+      const response = await flipClient.post('big_api/v3/pwf/bill', payload);
+
+      console.log('Flip E-Wallet payment created:', response.data);
+
+      // Transform response to match our expected format
+      const flipResponse = response.data;
+
+      // Determine status based on bill_payment status
+      const billStatus = flipResponse.bill_payment?.status || flipResponse.status;
+      let paymentStatus: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' = 'PENDING';
+      if (billStatus === 'PENDING') paymentStatus = 'PENDING';
+      else if (billStatus === 'PAID' || billStatus === 'COMPLETED') paymentStatus = 'PAID';
+      else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
+      else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
+
+      // Map e-wallet code to name
+      const ewalletNames: Record<string, string> = {
+        shopeepay_app: 'ShopeePay',
+        ovo: 'OVO',
+        dana: 'DANA',
+        gopay: 'GoPay',
+        linkaja: 'LinkAja',
+        shopeepay: 'ShopeePay',
+      };
+
+      return {
+        ewallet_id: flipResponse.link_id?.toString() || flipResponse.bill_payment?.id || flipResponse.id?.toString(),
+        link_id: flipResponse.link_id,
+        link_url: flipResponse.link_url || '',
+        payment_url: flipResponse.payment_url || '',
+        ewallet_code: request.ewallet_code,
+        ewallet_name: ewalletNames[request.ewallet_code.toLowerCase()] || request.ewallet_code.toUpperCase(),
+        amount: flipResponse.amount,
+        order_id: request.order_id,
+        status: paymentStatus,
+        created_at: flipResponse.created_from || new Date().toISOString(),
+        expires_at: flipResponse.expired_date || expiredDate.toISOString(),
+        bill_payment_id: flipResponse.bill_payment?.id,
+      };
+    } catch (error: any) {
+      console.error('Flip E-Wallet payment creation failed:', error.response?.data || error.message);
+      console.error('Flip request config:', error.config);
+      throw new Error(error.response?.data?.message || 'Failed to create Flip E-Wallet payment');
+    }
+  }
+
+  /**
+   * Get E-Wallet Payment Status - Staging Mode
+   * Endpoint: GET /big_api/v3/bill/{id}
+   */
+  async getEwalletStatus(ewalletId: string): Promise<FlipEwalletResponse> {
+    try {
+      // Use staging bill status endpoint
+      const response = await flipClient.get(`big_api/v3/bill/${ewalletId}`);
+
+      // Transform response to match our expected format
+      const flipResponse = response.data;
+
+      // Extract e-wallet code from bill_payment
+      const ewalletCode = flipResponse.bill_payment?.sender_bank || flipResponse.sender_bank || '';
+
+      // Determine status based on bill_payment status
+      const billStatus = flipResponse.bill_payment?.status || flipResponse.status;
+      let paymentStatus: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' = 'PENDING';
+      if (billStatus === 'PENDING') paymentStatus = 'PENDING';
+      else if (billStatus === 'PAID' || billStatus === 'COMPLETED') paymentStatus = 'PAID';
+      else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
+      else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
+
+      // Map e-wallet code to name
+      const ewalletNames: Record<string, string> = {
+        shopeepay_app: 'ShopeePay',
+        ovo: 'OVO',
+        dana: 'DANA',
+        gopay: 'GoPay',
+        linkaja: 'LinkAja',
+        shopeepay: 'ShopeePay',
+      };
+
+      return {
+        ewallet_id: flipResponse.link_id?.toString() || flipResponse.bill_payment?.id || ewalletId,
+        link_id: flipResponse.link_id,
+        link_url: flipResponse.link_url || '',
+        payment_url: flipResponse.payment_url || '',
+        ewallet_code: ewalletCode,
+        ewallet_name: ewalletNames[ewalletCode.toLowerCase()] || ewalletCode.toUpperCase(),
+        amount: flipResponse.amount,
+        order_id: flipResponse.reference_id || flipResponse.title || '',
+        status: paymentStatus,
+        created_at: flipResponse.created_from || new Date().toISOString(),
+        expires_at: flipResponse.expired_date || new Date().toISOString(),
+        paid_at: billStatus === 'PAID' ? new Date().toISOString() : undefined,
+        bill_payment_id: flipResponse.bill_payment?.id,
+      };
+    } catch (error: any) {
+      // Silently handle 404 - payment might still be pending
+      if (error.response?.status === 404) {
+        throw new Error('PAYMENT_NOT_FOUND');
+      }
+      throw new Error(error.response?.data?.message || 'Failed to get E-Wallet status');
     }
   }
 
