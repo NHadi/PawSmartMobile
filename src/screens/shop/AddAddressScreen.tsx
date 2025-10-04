@@ -44,6 +44,12 @@ export default function AddAddressScreen() {
     detail: existingAddress?.detail || '',
     postalCode: existingAddress?.postalCode || '',
     isDefault: existingAddress?.isDefault || false,
+    latitude: existingAddress?.latitude,
+    longitude: existingAddress?.longitude,
+    province_id: existingAddress?.province_id,
+    city_id: existingAddress?.city_id,
+    district_id: existingAddress?.district_id,
+    subdistrict_id: existingAddress?.subdistrict_id,
   });
 
   // Use ref to persist form data across navigation
@@ -109,14 +115,26 @@ export default function AddAddressScreen() {
 
     try {
       let addressId: number | string;
-      
+
+      // Prepare extended location data for shipping
+      const extendedData = JSON.stringify({
+        detail: formData.detail || '',
+        province: formData.province || '',
+        district: formData.district || '',
+        subDistrict: formData.subDistrict || '',
+        province_id: formData.province_id,
+        city_id: formData.city_id,
+        district_id: formData.district_id,
+        subdistrict_id: formData.subdistrict_id,
+      });
+
       if (isEditing && existingAddress) {
         // Update existing address in Odoo
         await odooAddressService.updateAddress(parseInt(existingAddress.id), {
           name: formData.name!,
           phone: formData.phone!,
           street: formData.fullAddress!,
-          street2: formData.detail || '',
+          street2: extendedData,
           city: formData.city || '',
           zip: formData.postalCode!,
           partner_latitude: formData.latitude,
@@ -129,7 +147,7 @@ export default function AddAddressScreen() {
           name: formData.name!,
           phone: formData.phone!,
           street: formData.fullAddress!,
-          street2: formData.detail || '',
+          street2: extendedData,
           city: formData.city || '',
           zip: formData.postalCode!,
           latitude: formData.latitude,
@@ -212,6 +230,11 @@ export default function AddAddressScreen() {
           latitude: location.latitude,
           longitude: location.longitude,
           street: location.street || persistedData.street,
+          // Add KiriminAja location IDs for shipping
+          province_id: location.province_id,
+          city_id: location.city_id,
+          district_id: location.district_id,
+          subdistrict_id: location.subdistrict_id,
         };
 
         setFormData(newFormData);

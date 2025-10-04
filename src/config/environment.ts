@@ -62,6 +62,21 @@ export const config = {
           : 'YOUR_PRODUCTION_WEBHOOK_TOKEN'), // Replace with your production token
     },
   },
+
+  // Shipping Service Configuration
+  SHIPPING: {
+    KIRIMINAJA: {
+      BASE_URL: process.env.EXPO_PUBLIC_KIRIMINAJA_BASE_URL ||
+        (__DEV__
+          ? 'https://tdev.kiriminaja.com' // Development/Testing endpoint
+          : 'https://api.kiriminaja.com'), // Production endpoint
+      API_TOKEN: process.env.EXPO_PUBLIC_KIRIMINAJA_TOKEN ||
+        (__DEV__
+          ? '68ba0c1ca45329a8ccf59371cad993ba1c4a23d749ca0569e5e4476e18de6cf8' // Development token
+          : 'YOUR_PRODUCTION_TOKEN'), // Replace with production token
+      API_VERSION: 'v6.1',
+    },
+  },
   
   // Social Login Configuration
   SOCIAL_LOGIN: {

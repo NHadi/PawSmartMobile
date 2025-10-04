@@ -19,6 +19,7 @@ import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
 import { localLocationAPI } from '../../services/location/localLocationService';
+import kiriminAjaService from '../../services/shipping/kiriminAjaService';
 import { Province, City, District, LocationSelection } from '../../types/location';
 import { LocationListSkeleton } from '../../components/LoadingSkeletons/LocationSkeleton';
 // import { indonesiaData } from '../../data/indonesiaData';
@@ -94,7 +95,7 @@ export default function LocationPickerScreen() {
     await loadPostalCodes(district.name, updatedSelection.city?.name);
   };
 
-  const handlePostalCodeSelect = (code: string) => {
+  const handlePostalCodeSelect = async (code: string) => {
     setPostalCode(code);
     const finalSelection = {
       ...selection,
@@ -102,6 +103,25 @@ export default function LocationPickerScreen() {
     };
 
     console.log('Final selection before navigation:', finalSelection);
+
+    // Fetch KiriminAja location IDs for shipping
+    let kiriminAjaData = null;
+    try {
+      if (finalSelection.district && finalSelection.city) {
+        // Search with district and city for better accuracy
+        const searchKeyword = `${finalSelection.district.name}, ${finalSelection.city.name}`;
+        console.log('Searching KiriminAja for:', searchKeyword);
+
+        const result = await kiriminAjaService.searchLocation(searchKeyword);
+        if (result.results && result.results.length > 0) {
+          kiriminAjaData = result.results[0];
+          console.log('KiriminAja location found:', kiriminAjaData);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch KiriminAja location:', error);
+      // Continue without KiriminAja data - instant shipping will still work with coordinates
+    }
 
     const locationData = {
       province: finalSelection.province?.name,
@@ -111,6 +131,11 @@ export default function LocationPickerScreen() {
       fullAddress: finalSelection.district
         ? `${finalSelection.district.name}, ${finalSelection.city?.name}`
         : finalSelection.city?.name,
+      // Add KiriminAja IDs for shipping calculations
+      province_id: kiriminAjaData?.province_id?.toString(),
+      city_id: kiriminAjaData?.city_id?.toString(),
+      district_id: kiriminAjaData?.district_id?.toString(),
+      subdistrict_id: kiriminAjaData?.subdistrict_id?.toString(),
     };
 
     // Use callback if provided, otherwise navigate back to AddAddress

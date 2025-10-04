@@ -95,19 +95,13 @@ export default function ShippingOptionsScreen() {
         return;
       }
 
-      console.log('=== CUSTOMER ADDRESS DEBUG ===');
-      console.log('Full address object:', JSON.stringify(customerAddress, null, 2));
-      console.log('District:', customerAddress.district);
-      console.log('City:', customerAddress.city);
-      console.log('District ID:', customerAddress.district_id);
-      console.log('Latitude:', customerAddress.latitude);
-      console.log('Longitude:', customerAddress.longitude);
+      console.log('Using delivery address:', customerAddress.district || customerAddress.city, customerAddress.city);
 
       // TODO: Calculate actual weight from cart items
       const totalWeight = 1000; // Default 1kg for demo
 
       // Check what shipping data we have available
-      let hasDistrictId = !!customerAddress.district_id;
+      const hasDistrictId = !!customerAddress.district_id;
       const hasCoordinates = !!(customerAddress.latitude && customerAddress.longitude);
 
       if (!hasDistrictId && !hasCoordinates) {
@@ -118,84 +112,6 @@ export default function ShippingOptionsScreen() {
       }
 
       console.log('Address data available:', { hasDistrictId, hasCoordinates });
-
-      // If we don't have district_id but have district/city names, try to look it up
-      if (!hasDistrictId && customerAddress.district && customerAddress.city) {
-        console.log('🔍 Attempting to lookup district_id for:', customerAddress.district, customerAddress.city);
-
-        // Hardcoded fallback district IDs for common areas (temporary solution)
-        const FALLBACK_DISTRICT_IDS: { [key: string]: number } = {
-          'cilodong_depok': 456, // Cilodong, Kota Depok, Jawa Barat
-          'beji_depok': 457,
-          'pancoran mas_depok': 458,
-          'sukmajaya_depok': 459,
-          'cimanggis_depok': 460,
-          'limo_depok': 461,
-          'cinere_depok': 462,
-          'sawangan_depok': 463,
-          'bojongsari_depok': 464,
-          'cipayung_depok': 465,
-          'tapos_depok': 466,
-        };
-
-        try {
-          // Try district name first (most specific)
-          let searchQuery = customerAddress.district;
-          let locationResults = await kiriminAjaService.searchLocation(searchQuery);
-
-          // If multiple results or no results, try with city for better matching
-          if (!locationResults.status || !locationResults.results?.length) {
-            console.log('⚠️ No results with district only, trying with city...');
-            searchQuery = `${customerAddress.district}, ${customerAddress.city}`;
-            locationResults = await kiriminAjaService.searchLocation(searchQuery);
-          }
-
-          if (locationResults.status && locationResults.results?.length > 0) {
-            // Find best match by comparing city and province names
-            let match = locationResults.results[0];
-
-            // If multiple results, try to find exact match
-            if (locationResults.results.length > 1) {
-              const exactMatch = locationResults.results.find(r =>
-                r.city_name?.toLowerCase().includes(customerAddress.city?.toLowerCase() || '') &&
-                (customerAddress.province ?
-                  r.province_name?.toLowerCase().includes(customerAddress.province?.toLowerCase()) : true)
-              );
-              if (exactMatch) match = exactMatch;
-            }
-
-            console.log('✅ Found KiriminAja location via lazy lookup:', match);
-
-            // Update the customerAddress with found IDs
-            customerAddress.province_id = match.province_id?.toString();
-            customerAddress.city_id = match.city_id?.toString();
-            customerAddress.district_id = match.district_id;
-            customerAddress.subdistrict_id = match.subdistrict_id;
-
-            // Update hasDistrictId flag
-            hasDistrictId = !!customerAddress.district_id;
-          } else {
-            console.log('⚠️ No KiriminAja location match found via API, trying fallback...');
-          }
-        } catch (error) {
-          console.log('⚠️ KiriminAja lazy location search failed:', error);
-        }
-
-        // If still no district_id, try fallback mapping
-        if (!hasDistrictId) {
-          const fallbackKey = `${customerAddress.district?.toLowerCase()}_${customerAddress.city?.toLowerCase()}`.replace(/\s+/g, ' ');
-          const fallbackId = FALLBACK_DISTRICT_IDS[fallbackKey];
-
-          if (fallbackId) {
-            console.log('✅ Using fallback district_id:', fallbackId, 'for', fallbackKey);
-            customerAddress.district_id = fallbackId;
-            hasDistrictId = true;
-          } else {
-            console.log('⚠️ No fallback district_id found for:', fallbackKey);
-            console.log('💡 Available fallback keys:', Object.keys(FALLBACK_DISTRICT_IDS).join(', '));
-          }
-        }
-      }
 
       const promises: Promise<any>[] = [];
 
@@ -227,7 +143,7 @@ export default function ShippingOptionsScreen() {
             long: customerAddress.longitude!,
           },
           weight: totalWeight,
-          timezone: 'WIB', // Use WIB timezone abbreviation
+          timezone: 'Asia/Jakarta',
         };
         promises.push(kiriminAjaService.getInstantRates(instantRequest));
       } else {

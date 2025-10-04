@@ -218,6 +218,17 @@ export default function CheckoutScreen() {
           // Find default address or use first one
           const defaultAddr = odooAddresses.find(addr => addr.is_default_shipping) || odooAddresses[0];
           
+          // Try to parse extended data from street2 field
+          let extendedData: any = {};
+          try {
+            if (defaultAddr.street2 && defaultAddr.street2.startsWith('{')) {
+              extendedData = JSON.parse(defaultAddr.street2);
+            }
+          } catch (e) {
+            // If parsing fails, treat street2 as plain detail text
+            extendedData = { detail: defaultAddr.street2 };
+          }
+
           // Convert to our Address format
           const convertedAddress: Address = {
             id: defaultAddr.id.toString(),
@@ -225,15 +236,20 @@ export default function CheckoutScreen() {
             name: defaultAddr.name,
             phone: defaultAddr.phone || defaultAddr.mobile || '',
             fullAddress: defaultAddr.street || '',
-            detail: defaultAddr.street2 || '',
+            detail: extendedData.detail || defaultAddr.street2 || '',
             postalCode: defaultAddr.zip || '',
             isDefault: defaultAddr.is_default_shipping || false,
             latitude: defaultAddr.partner_latitude,
             longitude: defaultAddr.partner_longitude,
-            province: defaultAddr.state_id ? defaultAddr.state_id[1] : '',
+            province: extendedData.province || (defaultAddr.state_id ? defaultAddr.state_id[1] : ''),
             city: defaultAddr.city || '',
-            district: '',
-            subDistrict: '',
+            district: extendedData.district || '',
+            subDistrict: extendedData.subDistrict || '',
+            // Include KiriminAja IDs for shipping
+            province_id: extendedData.province_id,
+            city_id: extendedData.city_id,
+            district_id: extendedData.district_id,
+            subdistrict_id: extendedData.subdistrict_id,
           };
           
           setSelectedAddress(convertedAddress);
@@ -400,9 +416,10 @@ export default function CheckoutScreen() {
 
   const handleSelectShipping = () => {
     navigation.navigate('ShippingOptions', {
+      deliveryAddress: selectedAddress, // Pass the selected delivery address
       selectedShipping,
       selectedPayment, // Preserve payment selection
-    } as any);
+    });
   };
 
   const handleSelectVoucher = () => {

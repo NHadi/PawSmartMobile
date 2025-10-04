@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,6 +17,8 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ProfileStackParamList } from '../../navigation/types';
+import kiriminAjaService, { ShippingService } from '../../services/shipping/kiriminAjaService';
+import { Address } from '../../services/addressServiceAPI';
 
 type NavigationProp = StackNavigationProp<ProfileStackParamList, 'OrderDetail'>;
 type RouteProps = RouteProp<ProfileStackParamList, 'OrderDetail'>;
@@ -55,6 +58,8 @@ interface OrderDetail {
     address: string;
     recipientName: string;
     recipientPhone: string;
+    option?: 'express' | 'instant'; // Shipping option type
+    deliveryAddress?: Address; // Full address object with location IDs and coordinates
   };
   payment: {
     method: string;
@@ -64,6 +69,26 @@ interface OrderDetail {
     total: number;
   };
 }
+
+// Warehouse/Origin Address Configuration
+// TODO: Move this to environment config or database
+const WAREHOUSE_ADDRESS: Address = {
+  id: 'warehouse-1',
+  label: 'Warehouse Utama',
+  name: 'PawSmart Warehouse',
+  phone: '+62 21 1234567',
+  full_address: 'Jl. Warehouse No. 1, Jakarta Pusat',
+  postal_code: '10110',
+  is_default: true,
+  latitude: -6.2088,
+  longitude: 106.8456,
+  province: 'DKI Jakarta',
+  city: 'Jakarta Pusat',
+  district: 'Menteng',
+  province_id: '31',
+  city_id: '3171',
+  district_id: 151, // Jakarta Pusat district ID for KiriminAja
+};
 
 const mockOrderDetail: OrderDetail = {
   id: '1',
@@ -132,6 +157,23 @@ const mockOrderDetail: OrderDetail = {
     address: 'Jl. Sudirman No. 123, Jakarta Selatan, DKI Jakarta 12345',
     recipientName: 'John Doe',
     recipientPhone: '+62 812 3456 7890',
+    deliveryAddress: {
+      id: 'addr-1',
+      label: 'Rumah',
+      name: 'John Doe',
+      phone: '+62 812 3456 7890',
+      full_address: 'Jl. Sudirman No. 123, Jakarta Selatan, DKI Jakarta 12345',
+      postal_code: '12345',
+      is_default: true,
+      latitude: -6.2297,
+      longitude: 106.8150,
+      province: 'DKI Jakarta',
+      city: 'Jakarta Selatan',
+      district: 'Kebayoran Baru',
+      province_id: '31',
+      city_id: '3174',
+      district_id: 154, // Jakarta Selatan district ID for KiriminAja
+    },
   },
   payment: {
     method: 'Mart',
@@ -148,9 +190,143 @@ export default function OrderDetailScreen() {
   const { orderId } = route.params;
 
   const [orderItems, setOrderItems] = useState(mockOrderDetail.items);
+  const [shippingOptions, setShippingOptions] = useState<{
+    express: ShippingService[];
+    instant: ShippingService[];
+  }>({
+    express: [],
+    instant: [],
+  });
+  const [selectedShippingOption, setSelectedShippingOption] = useState<'express' | 'instant'>('express');
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
 
   // In a real app, you would fetch order details based on orderId
   const order = { ...mockOrderDetail, items: orderItems };
+
+  // Fetch shipping rates on mount
+  useEffect(() => {
+    fetchShippingRates();
+  }, []);
+
+  const fetchShippingRates = async () => {
+    setLoadingShipping(true);
+    setShippingError(null);
+
+    try {
+      // Get delivery address from order
+      const deliveryAddress = order.shipping.deliveryAddress;
+
+      if (!deliveryAddress) {
+        setShippingError('Alamat pengiriman tidak tersedia');
+        return;
+      }
+
+      // Calculate total weight from items (assume 1kg per item as default)
+      // TODO: Add actual weight field to product/item
+      const totalWeight = order.items.reduce((sum, item) => sum + (item.quantity * 1000), 0); // 1000g = 1kg per item
+
+      // Check what shipping data we have available
+      const hasDistrictId = !!deliveryAddress.district_id;
+      const hasCoordinates = !!(deliveryAddress.latitude && deliveryAddress.longitude);
+
+      if (!hasDistrictId && !hasCoordinates) {
+        console.warn('Delivery address missing both district_id and coordinates:', deliveryAddress);
+        setShippingError('Alamat pengiriman tidak lengkap');
+        return;
+      }
+
+      console.log('Address data available:', { hasDistrictId, hasCoordinates });
+      console.log('From:', WAREHOUSE_ADDRESS.district, 'To:', deliveryAddress.district || deliveryAddress.city);
+
+      const promises: Promise<any>[] = [];
+
+      // Fetch Express shipping ONLY if we have district_id
+      if (hasDistrictId) {
+        const shippingRequest = {
+          origin: Number(WAREHOUSE_ADDRESS.district_id),
+          destination: Number(deliveryAddress.district_id),
+          weight: totalWeight,
+          insurance: 0 as 0 | 1,
+        };
+        console.log('Fetching express rates with request:', shippingRequest);
+        promises.push(kiriminAjaService.getShippingRates(shippingRequest));
+      } else {
+        console.log('Skipping express rates - no district_id');
+        promises.push(Promise.resolve({ status: false, results: [] }));
+      }
+
+      // Fetch Instant shipping ONLY if we have coordinates
+      if (hasCoordinates) {
+        const instantRequest = {
+          origin: {
+            lat: WAREHOUSE_ADDRESS.latitude!,
+            long: WAREHOUSE_ADDRESS.longitude!,
+          },
+          destination: {
+            lat: deliveryAddress.latitude!,
+            long: deliveryAddress.longitude!,
+          },
+          weight: totalWeight,
+          timezone: 'Asia/Jakarta',
+        };
+        console.log('Fetching instant rates with request:', instantRequest);
+        promises.push(kiriminAjaService.getInstantRates(instantRequest));
+      } else {
+        console.log('Skipping instant rates - no coordinates');
+        promises.push(Promise.resolve({ status: false, results: [] }));
+      }
+
+      // Fetch available shipping options
+      const [expressResponse, instantResponse] = await Promise.allSettled(promises);
+
+      let expressServices: ShippingService[] = [];
+      let instantServices: ShippingService[] = [];
+
+      // Process Express response
+      if (expressResponse.status === 'fulfilled' && expressResponse.value.status) {
+        const realExpressServices = kiriminAjaService.filterRealServices(expressResponse.value.results);
+        // Filter only "regular" group for express
+        expressServices = kiriminAjaService.filterByGroup(realExpressServices, 'regular');
+        console.log('Express API returned:', expressResponse.value.results.length, 'services');
+        console.log('Express after filtering:', expressServices.length, 'services');
+      } else {
+        console.error('Express API failed:', expressResponse.status === 'rejected' ? expressResponse.reason : 'No results');
+      }
+
+      // Process Instant response
+      if (instantResponse.status === 'fulfilled' && instantResponse.value.status) {
+        const realInstantServices = kiriminAjaService.filterRealServices(instantResponse.value.results);
+        // Instant endpoint returns instant services directly
+        instantServices = realInstantServices;
+        console.log('Instant API returned:', instantResponse.value.results.length, 'services');
+        console.log('Instant after filtering:', instantServices.length, 'services');
+      } else {
+        console.error('Instant API failed:', instantResponse.status === 'rejected' ? instantResponse.reason : 'No results');
+      }
+
+      console.log('=== FINAL SHIPPING OPTIONS ===');
+      console.log('Express services:', expressServices.length);
+      console.log('Instant services:', instantServices.length);
+
+      setShippingOptions({
+        express: expressServices,
+        instant: instantServices,
+      });
+
+      // Set default selection based on availability
+      if (expressServices.length > 0) {
+        setSelectedShippingOption('express');
+      } else if (instantServices.length > 0) {
+        setSelectedShippingOption('instant');
+      }
+    } catch (error) {
+      console.error('Failed to fetch shipping rates:', error);
+      setShippingError('Gagal memuat opsi pengiriman');
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
 
   const updateOrderType = (itemId: string, orderType: 'autokirim' | 'sekali_beli') => {
     setOrderItems(prevItems =>
@@ -403,6 +579,100 @@ export default function OrderDetailScreen() {
           {renderTimeline()}
         </View>
 
+        {/* Shipping Options */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionLine} />
+            <Text style={styles.sectionTitle}>Opsi Pengiriman</Text>
+          </View>
+
+          {loadingShipping ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={Colors.primary.main} />
+              <Text style={styles.loadingText}>Memuat opsi pengiriman...</Text>
+            </View>
+          ) : shippingError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{shippingError}</Text>
+              <TouchableOpacity onPress={fetchShippingRates} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Coba Lagi</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.shippingOptionsContainer}>
+              {/* Express Services */}
+              {shippingOptions.express.length > 0 && (
+                <>
+                  <Text style={styles.shippingGroupTitle}>Express</Text>
+                  {shippingOptions.express.map((service, index) => (
+                    <TouchableOpacity
+                      key={`express-${index}`}
+                      style={[
+                        styles.shippingOptionCard,
+                        selectedShippingOption === 'express' && styles.shippingOptionCardSelected,
+                      ]}
+                      onPress={() => setSelectedShippingOption('express')}
+                    >
+                      <View style={styles.radioButton}>
+                        {selectedShippingOption === 'express' && (
+                          <View style={styles.radioButtonSelected} />
+                        )}
+                      </View>
+                      <View style={styles.shippingOptionInfo}>
+                        <Text style={styles.shippingOptionTitle}>{service.service_name}</Text>
+                        <Text style={styles.shippingOptionEtd}>
+                          Estimasi {kiriminAjaService.formatETD(service.etd)}
+                        </Text>
+                      </View>
+                      <Text style={styles.shippingOptionPrice}>
+                        {kiriminAjaService.formatCost(service.cost)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {/* Instant Services */}
+              {shippingOptions.instant.length > 0 && (
+                <>
+                  <Text style={styles.shippingGroupTitle}>Instant</Text>
+                  {shippingOptions.instant.map((service, index) => (
+                    <TouchableOpacity
+                      key={`instant-${index}`}
+                      style={[
+                        styles.shippingOptionCard,
+                        selectedShippingOption === 'instant' && styles.shippingOptionCardSelected,
+                      ]}
+                      onPress={() => setSelectedShippingOption('instant')}
+                    >
+                      <View style={styles.radioButton}>
+                        {selectedShippingOption === 'instant' && (
+                          <View style={styles.radioButtonSelected} />
+                        )}
+                      </View>
+                      <View style={styles.shippingOptionInfo}>
+                        <Text style={styles.shippingOptionTitle}>{service.service_name}</Text>
+                        <Text style={styles.shippingOptionEtd}>
+                          Estimasi {kiriminAjaService.formatETD(service.etd)}
+                        </Text>
+                      </View>
+                      <Text style={styles.shippingOptionPrice}>
+                        {kiriminAjaService.formatCost(service.cost)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {shippingOptions.express.length === 0 && shippingOptions.instant.length === 0 && (
+                <Text style={styles.noOptionsText}>
+                  Tidak ada opsi pengiriman tersedia
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* Shipping Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -412,7 +682,13 @@ export default function OrderDetailScreen() {
           <View style={styles.shippingInfo}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Kurir</Text>
-              <Text style={styles.infoValue}>{order.shipping.method}</Text>
+              <Text style={styles.infoValue}>
+                {selectedShippingOption === 'express' && shippingOptions.express.length > 0
+                  ? shippingOptions.express[0].service_name
+                  : selectedShippingOption === 'instant' && shippingOptions.instant.length > 0
+                  ? shippingOptions.instant[0].service_name
+                  : order.shipping.method}
+              </Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Alamat</Text>
@@ -825,5 +1101,90 @@ const styles = StyleSheet.create({
   linkText: {
     color: Colors.primary.main,
     textDecorationLine: 'underline',
+  },
+  // Shipping options styles
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  loadingText: {
+    marginLeft: Spacing.sm,
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.secondary,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.error.main,
+    marginBottom: Spacing.md,
+  },
+  retryButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.primary.main,
+    borderRadius: BorderRadius.sm,
+  },
+  retryButtonText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.white,
+    fontFamily: Typography.fontFamily.medium,
+  },
+  shippingOptionsContainer: {
+    gap: Spacing.md,
+  },
+  shippingOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    borderColor: Colors.border.light,
+  },
+  shippingOptionCardSelected: {
+    borderColor: Colors.primary.main,
+    backgroundColor: Colors.primary.light,
+  },
+  shippingOptionInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  shippingOptionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
+  },
+  shippingOptionDetail: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.xs,
+  },
+  shippingOptionEtd: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.text.tertiary,
+  },
+  shippingOptionPrice: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bold,
+    color: Colors.primary.main,
+  },
+  noOptionsText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  shippingGroupTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.text.primary,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
   },
 });

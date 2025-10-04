@@ -835,6 +835,9 @@ export default function MapPickerScreen() {
         accuracy: locationToUse.accuracy
       };
 
+      // Note: district_id lookup moved to ShippingOptionsScreen (lazy loading)
+      // This avoids API calls during address creation and provides better error handling
+
       console.log('🎯 Final location data being sent to AddAddress:', enhancedLocationData);
 
 

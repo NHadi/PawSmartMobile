@@ -136,13 +136,17 @@ export type HomeStackParamList = {
   Cart: undefined;
   Search: undefined;
   Category: { categoryId: string };
-  Checkout: { 
-    orderId?: string; 
+  Checkout: {
+    orderId?: string;
     orderName?: string;
     selectedAddress?: any;
   } | undefined;
   PaymentMethod: undefined;
-  ShippingOptions: undefined;
+  ShippingOptions: {
+    deliveryAddress?: any; // Selected delivery address from checkout
+    selectedShipping?: any;
+    selectedPayment?: any;
+  };
   VoucherSelection: undefined;
   DoctorCart: undefined;
   MyOrders: { orderId?: string };

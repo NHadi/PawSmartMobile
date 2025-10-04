@@ -34,6 +34,11 @@ export interface Address {
   city?: string;
   district?: string;
   subDistrict?: string;
+  // KiriminAja location IDs for shipping
+  province_id?: string;
+  city_id?: string;
+  district_id?: string | number;
+  subdistrict_id?: string | number;
 }
 
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'AddressList'>;
@@ -53,24 +58,42 @@ export default function AddressListScreen() {
   const loadAddresses = async () => {
     try {
       const odooAddresses = await odooAddressService.getUserAddresses();
-      
+
       // Convert Odoo addresses to our format
-      const convertedAddresses: Address[] = odooAddresses.map(addr => ({
-        id: addr.id.toString(),
-        label: addr.type || 'Rumah',
-        name: addr.name,
-        phone: addr.phone || addr.mobile || '',
-        fullAddress: addr.street || '',
-        detail: addr.street2 || '',
-        postalCode: addr.zip || '',
-        isDefault: addr.is_default_shipping || false,
-        latitude: addr.partner_latitude,
-        longitude: addr.partner_longitude,
-        province: addr.state_id ? addr.state_id[1] : '',
-        city: addr.city || '',
-        district: '', // Odoo doesn't have district by default
-        subDistrict: '', // Odoo doesn't have sub-district by default
-      }));
+      const convertedAddresses: Address[] = odooAddresses.map(addr => {
+        // Try to parse extended data from street2 field
+        let extendedData: any = {};
+        try {
+          if (addr.street2 && addr.street2.startsWith('{')) {
+            extendedData = JSON.parse(addr.street2);
+          }
+        } catch (e) {
+          // If parsing fails, treat street2 as plain detail text
+          extendedData = { detail: addr.street2 };
+        }
+
+        return {
+          id: addr.id.toString(),
+          label: addr.type || 'Rumah',
+          name: addr.name,
+          phone: addr.phone || addr.mobile || '',
+          fullAddress: addr.street || '',
+          detail: extendedData.detail || addr.street2 || '',
+          postalCode: addr.zip || '',
+          isDefault: addr.is_default_shipping || false,
+          latitude: addr.partner_latitude,
+          longitude: addr.partner_longitude,
+          province: extendedData.province || (addr.state_id ? addr.state_id[1] : ''),
+          city: addr.city || '',
+          district: extendedData.district || '',
+          subDistrict: extendedData.subDistrict || '',
+          // Include KiriminAja IDs for shipping
+          province_id: extendedData.province_id,
+          city_id: extendedData.city_id,
+          district_id: extendedData.district_id,
+          subdistrict_id: extendedData.subdistrict_id,
+        };
+      });
       
       setAddresses(convertedAddresses);
       

@@ -20,6 +20,11 @@ export interface Address {
   city?: string;
   district?: string;
   sub_district?: string;
+  // Location IDs for shipping calculations
+  province_id?: string;
+  city_id?: string;
+  district_id?: string | number; // KiriminAja uses numeric district IDs
+  subdistrict_id?: string | number;
   created_at?: string;
   updated_at?: string;
 }
@@ -39,6 +44,33 @@ class AddressServiceAPI {
   constructor() {
     // Use configured API URL
     this.baseURL = config.API.BASE_URL;
+  }
+
+  // Transform camelCase address from backend to snake_case Address interface
+  private transformAddress(address: any): Address {
+    return {
+      id: address.id,
+      user_id: address.userId,
+      label: address.label,
+      name: address.name,
+      phone: address.phone,
+      full_address: address.fullAddress || address.full_address,
+      detail: address.detail,
+      postal_code: address.postalCode || address.postal_code,
+      is_default: address.isDefault ?? address.is_default ?? false,
+      latitude: address.latitude,
+      longitude: address.longitude,
+      province: address.province,
+      city: address.city,
+      district: address.district,
+      sub_district: address.subDistrict || address.sub_district,
+      province_id: address.provinceId || address.province_id,
+      city_id: address.cityId || address.city_id,
+      district_id: address.districtId || address.district_id,
+      subdistrict_id: address.subdistrictId || address.subdistrict_id,
+      created_at: address.createdAt || address.created_at,
+      updated_at: address.updatedAt || address.updated_at,
+    };
   }
 
   // Helper to get auth headers
