@@ -1,0 +1,1606 @@
+openapi: 3.0.3
+info:
+  title: PawSmart Tenant API Documentation
+  description: |
+    REST API documentation for **PawSmart Tenant/Partner Apps**.
+
+    This API serves tenant applications for service providers:
+    - **Grooming Services**: Manage grooming bookings and services
+    - **Hotel Services**: Manage pet boarding bookings and activities
+    - **Doctor Services**: Manage veterinary appointments and medical records
+
+    ## Authentication
+    All endpoints require Tenant JWT Bearer token.
+    Include the token in the Authorization header: `Bearer {token}`
+
+    ## Tenant Types
+    - **grooming**: Pet grooming service providers
+    - **hotel**: Pet boarding/hotel service providers
+    - **doctor**: Veterinary/doctor service providers
+
+  version: 1.0.0
+  contact:
+    name: PawSmart Tenant Support
+    email: tenant-support@pawsmart.com
+
+servers:
+  - url: https://api.pawsmart.com/v1
+    description: Production Server
+  - url: https://staging-api.pawsmart.com/v1
+    description: Staging Server
+  - url: http://localhost:3000/v1
+    description: Development Server
+
+tags:
+  - name: Tenant Auth
+    description: Tenant authentication
+  - name: Tenant Profile
+    description: Tenant profile management
+  - name: Doctor - Appointments
+    description: Veterinary appointment management
+  - name: Doctor - Medical Records
+    description: Pet medical records and prescriptions
+  - name: Grooming - Bookings
+    description: Grooming booking management
+  - name: Grooming - Services
+    description: Grooming service management
+  - name: Hotel - Bookings
+    description: Hotel booking management
+  - name: Hotel - Rooms
+    description: Room management
+  - name: Hotel - Activities
+    description: Pet activity logging
+  - name: Customers
+    description: Customer information (read-only)
+  - name: Revenue & Stats
+    description: Revenue and statistics
+  - name: Reviews
+    description: Service reviews (read-only)
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== TENANT AUTHENTICATION ====================
+  /auth/login:
+    post:
+      tags: [Tenant Auth]
+      summary: Tenant login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: grooming_salon_1
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Tenant Auth]
+      summary: Tenant logout
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/change-password:
+    put:
+      tags: [Tenant Auth]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== TENANT PROFILE ====================
+  /tenants/{id}:
+    get:
+      tags: [Tenant Profile]
+      summary: Get tenant profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tenant ID (use 'me' for current tenant)
+          schema:
+            type: string
+            example: me
+      responses:
+        '200':
+          description: Tenant profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Tenant'
+
+    put:
+      tags: [Tenant Profile]
+      summary: Update tenant profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: me
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+                description:
+                  type: string
+                bank_account:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /tenants/{id}/services:
+    get:
+      tags: [Tenant Profile]
+      summary: Get tenant services
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: me
+      responses:
+        '200':
+          description: Services list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+
+    post:
+      tags: [Tenant Profile]
+      summary: Add tenant service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: me
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service_type, service_id]
+              properties:
+                service_type:
+                  type: string
+                  enum: [grooming, hotel, doctor]
+                service_id:
+                  type: integer
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /tenants/{id}/stats:
+    get:
+      tags: [Revenue & Stats]
+      summary: Get tenant statistics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: me
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: month
+      responses:
+        '200':
+          description: Tenant stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_bookings:
+                        type: integer
+                        example: 145
+                      pending_bookings:
+                        type: integer
+                        example: 12
+                      completed_bookings:
+                        type: integer
+                        example: 98
+                      total_revenue:
+                        type: number
+                        example: 45000000
+                      rating:
+                        type: number
+                        example: 4.7
+                      review_count:
+                        type: integer
+                        example: 87
+
+  /tenants/{id}/revenue:
+    get:
+      tags: [Revenue & Stats]
+      summary: Get tenant revenue
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: me
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Revenue data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_revenue:
+                        type: number
+                      bookings_count:
+                        type: integer
+                      average_transaction:
+                        type: number
+                      revenue_by_date:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            revenue:
+                              type: number
+                            bookings:
+                              type: integer
+
+  /tenants/{id}/bookings:
+    get:
+      tags: [Revenue & Stats]
+      summary: Get all tenant bookings
+      description: Get bookings across all services (grooming, hotel, appointments)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: me
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Bookings list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ==================== DOCTOR - APPOINTMENTS ====================
+  /appointments:
+    get:
+      tags: [Doctor - Appointments]
+      summary: Get all appointments
+      description: For doctor tenants only
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, confirmed, done, cancelled, no_show]
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Appointments list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /appointments/{id}:
+    get:
+      tags: [Doctor - Appointments]
+      summary: Get appointment details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+
+    put:
+      tags: [Doctor - Appointments]
+      summary: Update appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                appointment_date:
+                  type: string
+                  format: date
+                appointment_time:
+                  type: string
+                  format: time
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Doctor - Appointments]
+      summary: Cancel appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /appointments/{id}/status:
+    patch:
+      tags: [Doctor - Appointments]
+      summary: Update appointment status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [confirmed, done, cancelled, no_show]
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /appointments/{id}/complete:
+    post:
+      tags: [Doctor - Appointments]
+      summary: Mark appointment as complete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== DOCTOR - MEDICAL RECORDS ====================
+  /appointments/{id}/medical-record:
+    post:
+      tags: [Doctor - Medical Records]
+      summary: Add medical record to appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicalRecordInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /appointments/{id}/prescription:
+    post:
+      tags: [Doctor - Medical Records]
+      summary: Add prescription to appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+    get:
+      tags: [Doctor - Medical Records]
+      summary: Get appointment prescription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Prescription details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Prescription'
+
+  /pets/{id}/medical-history:
+    post:
+      tags: [Doctor - Medical Records]
+      summary: Add medical record to pet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicalRecordInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/vaccinations:
+    post:
+      tags: [Doctor - Medical Records]
+      summary: Add vaccination record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/vaccinations/{vaccId}:
+    put:
+      tags: [Doctor - Medical Records]
+      summary: Update vaccination record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: vaccId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== GROOMING - BOOKINGS ====================
+  /grooming/bookings:
+    get:
+      tags: [Grooming - Bookings]
+      summary: Get all grooming bookings
+      description: For grooming tenants only
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, confirmed, in_progress, done, cancelled]
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Bookings list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroomingBooking'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /grooming/bookings/{id}:
+    get:
+      tags: [Grooming - Bookings]
+      summary: Get booking details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/GroomingBooking'
+
+    put:
+      tags: [Grooming - Bookings]
+      summary: Update booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                booking_date:
+                  type: string
+                  format: date
+                booking_time:
+                  type: string
+                  format: time
+                stylist_id:
+                  type: integer
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Grooming - Bookings]
+      summary: Cancel booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /grooming/bookings/{id}/status:
+    patch:
+      tags: [Grooming - Bookings]
+      summary: Update booking status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [confirmed, in_progress, done, cancelled]
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== GROOMING - SERVICES ====================
+  /grooming/services:
+    get:
+      tags: [Grooming - Services]
+      summary: Get grooming services
+      responses:
+        '200':
+          description: Services list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroomingService'
+
+  /grooming/stylists:
+    get:
+      tags: [Grooming - Services]
+      summary: Get grooming stylists
+      responses:
+        '200':
+          description: Stylists list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Stylist'
+
+  /grooming/stylists/{id}/schedule:
+    get:
+      tags: [Grooming - Services]
+      summary: Get stylist schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Stylist schedule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+
+  # ==================== HOTEL - BOOKINGS ====================
+  /hotel/bookings:
+    get:
+      tags: [Hotel - Bookings]
+      summary: Get all hotel bookings
+      description: For hotel tenants only
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, confirmed, checked_in, checked_out, cancelled]
+        - name: check_in_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Bookings list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HotelBooking'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /hotel/bookings/{id}:
+    get:
+      tags: [Hotel - Bookings]
+      summary: Get booking details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/HotelBooking'
+
+    put:
+      tags: [Hotel - Bookings]
+      summary: Update booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room_id:
+                  type: integer
+                check_in_date:
+                  type: string
+                  format: date
+                check_out_date:
+                  type: string
+                  format: date
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Hotel - Bookings]
+      summary: Cancel booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /hotel/bookings/{id}/status:
+    patch:
+      tags: [Hotel - Bookings]
+      summary: Update booking status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [confirmed, checked_in, checked_out, cancelled]
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /hotel/bookings/{id}/checkin:
+    post:
+      tags: [Hotel - Bookings]
+      summary: Check-in pet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /hotel/bookings/{id}/checkout:
+    post:
+      tags: [Hotel - Bookings]
+      summary: Check-out pet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== HOTEL - ROOMS ====================
+  /hotel/rooms:
+    get:
+      tags: [Hotel - Rooms]
+      summary: Get all rooms
+      responses:
+        '200':
+          description: Rooms list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HotelRoom'
+
+  /hotel/availability:
+    get:
+      tags: [Hotel - Rooms]
+      summary: Check room availability
+      parameters:
+        - name: check_in_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: check_out_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Available rooms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HotelRoom'
+
+  # ==================== HOTEL - ACTIVITIES ====================
+  /hotel/bookings/{id}/activities:
+    get:
+      tags: [Hotel - Activities]
+      summary: Get pet activity logs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Activities list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PetActivity'
+
+    post:
+      tags: [Hotel - Activities]
+      summary: Add pet activity log
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activity_type, description]
+              properties:
+                activity_type:
+                  type: string
+                  enum: [meal, playtime, walk, checkup, bath, other]
+                  example: meal
+                activity_time:
+                  type: string
+                  format: time
+                description:
+                  type: string
+                  example: Fed morning meal - Royal Canin
+                photos:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                notes:
+                  type: string
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  # ==================== CUSTOMERS (READ-ONLY) ====================
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get customer details
+      description: Limited customer information for booking management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                      phone:
+                        type: string
+                      email:
+                        type: string
+
+  # ==================== REVIEWS (READ-ONLY) ====================
+  /reviews/services/{serviceId}:
+    get:
+      tags: [Reviews]
+      summary: Get service reviews
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Reviews list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+
+  responses:
+    Success:
+      description: Success
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            expires_in:
+              type: integer
+            tenant:
+              $ref: '#/components/schemas/Tenant'
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tenant_type:
+          type: string
+          enum: [grooming, hotel, doctor]
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        is_verified:
+          type: boolean
+        is_active:
+          type: boolean
+        rating:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: integer
+        appointment_number:
+          type: string
+        doctor_id:
+          type: integer
+        user_id:
+          type: integer
+        customer_name:
+          type: string
+        pet_id:
+          type: integer
+        pet_name:
+          type: string
+        appointment_date:
+          type: string
+          format: date
+        appointment_time:
+          type: string
+          format: time
+        service_type:
+          type: string
+          enum: [walk-in, home-service]
+        reason:
+          type: string
+        state:
+          type: string
+          enum: [draft, confirmed, done, cancelled, no_show]
+        total_amount:
+          type: number
+        notes:
+          type: string
+
+    MedicalRecordInput:
+      type: object
+      required: [record_date, diagnosis]
+      properties:
+        record_date:
+          type: string
+          format: date
+        diagnosis:
+          type: string
+        symptoms:
+          type: string
+        treatment:
+          type: string
+        prescriptions:
+          type: array
+          items:
+            type: object
+        vital_signs:
+          type: object
+        notes:
+          type: string
+
+    PrescriptionInput:
+      type: object
+      required: [medications]
+      properties:
+        medications:
+          type: array
+          items:
+            type: object
+            required: [name, dosage, frequency, duration]
+            properties:
+              name:
+                type: string
+              dosage:
+                type: string
+              frequency:
+                type: string
+              duration:
+                type: string
+              notes:
+                type: string
+        instructions:
+          type: string
+
+    Prescription:
+      type: object
+      properties:
+        id:
+          type: integer
+        appointment_id:
+          type: integer
+        pet_id:
+          type: integer
+        doctor_id:
+          type: integer
+        prescription_date:
+          type: string
+          format: date
+        medications:
+          type: array
+          items:
+            type: object
+        instructions:
+          type: string
+
+    VaccinationInput:
+      type: object
+      required: [name, vaccination_date]
+      properties:
+        name:
+          type: string
+        vaccination_date:
+          type: string
+          format: date
+        next_due_date:
+          type: string
+          format: date
+        veterinarian:
+          type: string
+        clinic:
+          type: string
+        batch_number:
+          type: string
+        notes:
+          type: string
+
+    GroomingBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+        booking_number:
+          type: string
+        user_id:
+          type: integer
+        customer_name:
+          type: string
+        pet_id:
+          type: integer
+        pet_name:
+          type: string
+        service_id:
+          type: integer
+        service_name:
+          type: string
+        stylist_id:
+          type: integer
+        stylist_name:
+          type: string
+        booking_date:
+          type: string
+          format: date
+        booking_time:
+          type: string
+          format: time
+        service_type:
+          type: string
+          enum: [walk-in, home-service]
+        state:
+          type: string
+          enum: [draft, confirmed, in_progress, done, cancelled]
+        total_amount:
+          type: number
+        notes:
+          type: string
+
+    GroomingService:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        duration:
+          type: integer
+        is_active:
+          type: boolean
+
+    Stylist:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        specialization:
+          type: string
+        experience_years:
+          type: integer
+        rating:
+          type: number
+        is_available:
+          type: boolean
+
+    HotelBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+        booking_number:
+          type: string
+        user_id:
+          type: integer
+        customer_name:
+          type: string
+        pet_id:
+          type: integer
+        pet_name:
+          type: string
+        room_id:
+          type: integer
+        room_number:
+          type: string
+        check_in_date:
+          type: string
+          format: date
+        check_out_date:
+          type: string
+          format: date
+        duration_days:
+          type: integer
+        state:
+          type: string
+          enum: [draft, confirmed, checked_in, checked_out, cancelled]
+        total_amount:
+          type: number
+        special_requests:
+          type: string
+        notes:
+          type: string
+
+    HotelRoom:
+      type: object
+      properties:
+        id:
+          type: integer
+        room_number:
+          type: string
+        room_type:
+          type: string
+        pet_type:
+          type: string
+        daily_rate:
+          type: number
+        facilities:
+          type: array
+          items:
+            type: string
+        is_available:
+          type: boolean
+
+    PetActivity:
+      type: object
+      properties:
+        id:
+          type: integer
+        booking_id:
+          type: integer
+        pet_id:
+          type: integer
+        activity_date:
+          type: string
+          format: date
+        activity_time:
+          type: string
+          format: time
+        activity_type:
+          type: string
+        description:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+        staff_name:
+          type: string
+        notes:
+          type: string
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
+          type: string
+        rating:
+          type: integer
+        title:
+          type: string
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time

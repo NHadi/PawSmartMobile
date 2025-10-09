@@ -1,0 +1,1847 @@
+openapi: 3.0.3
+info:
+  title: PawSmart CMS API Documentation
+  description: |
+    REST API documentation for **PawSmart CMS** (Admin Dashboard).
+
+    This API serves the administrative web dashboard for:
+    - Managing users and tenants
+    - Product catalog management (CRUD)
+    - Order and payment management
+    - Promotion and voucher management
+    - Content management (FAQ, T&C, Privacy)
+    - Analytics and reporting
+    - System configuration
+
+    ## Authentication
+    All endpoints require Admin JWT Bearer token.
+    Include the token in the Authorization header: `Bearer {token}`
+
+    ## Permissions
+    Different admin roles have different access levels:
+    - **Super Admin**: Full access to all endpoints
+    - **Admin**: Standard administrative access
+    - **Content Manager**: Content and promotion management only
+    - **Support**: Customer support and ticket management
+
+  version: 1.0.0
+  contact:
+    name: PawSmart CMS Support
+    email: cms-support@pawsmart.com
+
+servers:
+  - url: https://api.pawsmart.com/v1
+    description: Production Server
+  - url: https://staging-api.pawsmart.com/v1
+    description: Staging Server
+  - url: http://localhost:3000/v1
+    description: Development Server
+
+tags:
+  - name: Admin Auth
+    description: Admin authentication
+  - name: Dashboard
+    description: Dashboard analytics and stats
+  - name: User Management
+    description: Customer user management
+  - name: Product Management
+    description: Product catalog CRUD operations
+  - name: Category & Brand Management
+    description: Product categories and brands
+  - name: Order Management
+    description: Order processing and management
+  - name: Payment Management
+    description: Payment and refund management
+  - name: Promotion Management
+    description: Promotions and vouchers
+  - name: Tenant Management
+    description: Tenant (service provider) management
+  - name: Content Management
+    description: FAQ, terms, privacy policy
+  - name: Support Management
+    description: Customer support tickets
+  - name: Notification Management
+    description: Push notifications and broadcasts
+  - name: Loyalty Management
+    description: Loyalty points and rewards
+  - name: Review Management
+    description: Review moderation
+  - name: Reports & Analytics
+    description: Business reports and analytics
+  - name: Settings
+    description: System settings and configuration
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== ADMIN AUTHENTICATION ====================
+  /auth/login:
+    post:
+      tags: [Admin Auth]
+      summary: Admin login
+      description: Login for admin users only
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not authorized (customer account)
+
+  /auth/logout:
+    post:
+      tags: [Admin Auth]
+      summary: Admin logout
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/change-password:
+    put:
+      tags: [Admin Auth]
+      summary: Change admin password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== DASHBOARD ====================
+  /admin/dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard statistics
+      description: Overall business metrics for dashboard
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_users:
+                        type: integer
+                        example: 5420
+                      total_orders:
+                        type: integer
+                        example: 12350
+                      total_revenue:
+                        type: number
+                        example: 450000000
+                      total_products:
+                        type: integer
+                        example: 850
+                      active_orders:
+                        type: integer
+                        example: 145
+                      pending_payments:
+                        type: integer
+                        example: 23
+                      today_orders:
+                        type: integer
+                        example: 67
+                      today_revenue:
+                        type: number
+                        example: 15000000
+
+  /admin/dashboard/sales:
+    get:
+      tags: [Dashboard]
+      summary: Get sales analytics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, yearly]
+            default: daily
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Sales data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      sales:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            orders:
+                              type: integer
+                            revenue:
+                              type: number
+
+  /admin/dashboard/revenue:
+    get:
+      tags: [Dashboard]
+      summary: Get revenue reports
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, yearly]
+      responses:
+        '200':
+          description: Revenue data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+
+  /admin/dashboard/top-products:
+    get:
+      tags: [Dashboard]
+      summary: Get top-selling products
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Top products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: integer
+                        product_name:
+                          type: string
+                        sold_count:
+                          type: integer
+                        revenue:
+                          type: number
+
+  /admin/dashboard/recent-orders:
+    get:
+      tags: [Dashboard]
+      summary: Get recent orders
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Recent orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+  # ==================== USER MANAGEMENT ====================
+  /users:
+    get:
+      tags: [User Management]
+      summary: List all users
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          description: Search by name, email, username
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [customer, admin, tenant]
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /users/{id}:
+    get:
+      tags: [User Management]
+      summary: Get user details
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+    put:
+      tags: [User Management]
+      summary: Update user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [customer, admin, tenant]
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [User Management]
+      summary: Delete user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /users/{id}/status:
+    patch:
+      tags: [User Management]
+      summary: Activate/deactivate user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PRODUCT MANAGEMENT ====================
+  /products:
+    get:
+      tags: [Product Management]
+      summary: List all products
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+        - name: brand_id
+          in: query
+          schema:
+            type: integer
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Products list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+
+    post:
+      tags: [Product Management]
+      summary: Create new product
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, list_price]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                category_id:
+                  type: integer
+                brand_id:
+                  type: integer
+                sku:
+                  type: string
+                list_price:
+                  type: number
+                qty_available:
+                  type: integer
+                images:
+                  type: array
+                  description: Multiple product images
+                  items:
+                    type: string
+                    format: binary
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Product'
+
+  /products/{id}:
+    get:
+      tags: [Product Management]
+      summary: Get product details
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Product'
+
+    put:
+      tags: [Product Management]
+      summary: Update product
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                category_id:
+                  type: integer
+                brand_id:
+                  type: integer
+                sku:
+                  type: string
+                list_price:
+                  type: number
+                qty_available:
+                  type: integer
+                images:
+                  type: array
+                  description: Multiple product images (new uploads)
+                  items:
+                    type: string
+                    format: binary
+                remove_image_ids:
+                  type: array
+                  description: IDs of existing images to remove
+                  items:
+                    type: integer
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Product Management]
+      summary: Delete product
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /products/{id}/stock:
+    patch:
+      tags: [Product Management]
+      summary: Update product stock
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, move_type]
+              properties:
+                quantity:
+                  type: integer
+                  example: 100
+                move_type:
+                  type: string
+                  enum: [in, out, adjustment]
+                  example: in
+                notes:
+                  type: string
+                  example: Restock from supplier
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== CATEGORY & BRAND MANAGEMENT ====================
+  /products/categories:
+    get:
+      tags: [Category & Brand Management]
+      summary: List all categories
+      responses:
+        '200':
+          description: Categories list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductCategory'
+
+    post:
+      tags: [Category & Brand Management]
+      summary: Create category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                display_name:
+                  type: string
+                parent_id:
+                  type: integer
+                description:
+                  type: string
+                image:
+                  type: string
+                  format: uri
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /products/categories/{id}:
+    put:
+      tags: [Category & Brand Management]
+      summary: Update category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                display_name:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Category & Brand Management]
+      summary: Delete category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /products/brands:
+    get:
+      tags: [Category & Brand Management]
+      summary: List all brands
+      responses:
+        '200':
+          description: Brands list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductBrand'
+
+    post:
+      tags: [Category & Brand Management]
+      summary: Create brand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                display_name:
+                  type: string
+                logo:
+                  type: string
+                  format: uri
+                description:
+                  type: string
+                website:
+                  type: string
+                  format: uri
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  # ==================== ORDER MANAGEMENT ====================
+  /admin/orders:
+    get:
+      tags: [Order Management]
+      summary: List all orders
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, sale, done, cancel, waiting_payment, processing, shipped, delivered]
+        - name: search
+          in: query
+          description: Search by order number or customer name
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /admin/orders/stats:
+    get:
+      tags: [Order Management]
+      summary: Get order statistics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+      responses:
+        '200':
+          description: Order stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_orders:
+                        type: integer
+                      pending_orders:
+                        type: integer
+                      processing_orders:
+                        type: integer
+                      completed_orders:
+                        type: integer
+                      cancelled_orders:
+                        type: integer
+                      total_revenue:
+                        type: number
+
+  /orders/{id}:
+    get:
+      tags: [Order Management]
+      summary: Get order details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Order'
+
+    put:
+      tags: [Order Management]
+      summary: Update order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                shipping_method:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /orders/{id}/status:
+    patch:
+      tags: [Order Management]
+      summary: Update order status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [draft, sale, done, cancel, waiting_payment, payment_confirmed, admin_review, approved, processing, shipped, delivered]
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PAYMENT MANAGEMENT ====================
+  /payments/history:
+    get:
+      tags: [Payment Management]
+      summary: Get all payment history
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, success, failed, expired]
+      responses:
+        '200':
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /payments/{id}/refund:
+    post:
+      tags: [Payment Management]
+      summary: Process refund
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, reason]
+              properties:
+                amount:
+                  type: number
+                  example: 100000
+                reason:
+                  type: string
+                  example: Customer requested refund
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PROMOTION MANAGEMENT ====================
+  /promos:
+    get:
+      tags: [Promotion Management]
+      summary: List all promotions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Promotions list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Promotion'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Promotion Management]
+      summary: Create promotion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromotionInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /promos/{id}:
+    put:
+      tags: [Promotion Management]
+      summary: Update promotion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromotionInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Promotion Management]
+      summary: Delete promotion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /admin/vouchers:
+    get:
+      tags: [Promotion Management]
+      summary: List all vouchers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Vouchers list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Voucher'
+
+    post:
+      tags: [Promotion Management]
+      summary: Create voucher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [promotion_id, code]
+              properties:
+                promotion_id:
+                  type: integer
+                code:
+                  type: string
+                user_id:
+                  type: integer
+                  description: Assign to specific user (optional)
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /admin/vouchers/stats:
+    get:
+      tags: [Promotion Management]
+      summary: Get voucher statistics
+      responses:
+        '200':
+          description: Voucher stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_vouchers:
+                        type: integer
+                      claimed_vouchers:
+                        type: integer
+                      used_vouchers:
+                        type: integer
+                      expired_vouchers:
+                        type: integer
+
+  # ==================== TENANT MANAGEMENT ====================
+  /tenants:
+    get:
+      tags: [Tenant Management]
+      summary: List all tenants
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [grooming, hotel, doctor]
+        - name: is_verified
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Tenants list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenant'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Tenant Management]
+      summary: Create new tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /tenants/{id}:
+    get:
+      tags: [Tenant Management]
+      summary: Get tenant details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Tenant'
+
+    put:
+      tags: [Tenant Management]
+      summary: Update tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Tenant Management]
+      summary: Delete tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /tenants/{id}/status:
+    patch:
+      tags: [Tenant Management]
+      summary: Activate/deactivate or verify tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+                is_verified:
+                  type: boolean
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== CONTENT MANAGEMENT ====================
+  /admin/faq:
+    get:
+      tags: [Content Management]
+      summary: List all FAQs
+      responses:
+        '200':
+          description: FAQs list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FAQ'
+
+    post:
+      tags: [Content Management]
+      summary: Create FAQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question, answer]
+              properties:
+                category_id:
+                  type: integer
+                question:
+                  type: string
+                answer:
+                  type: string
+                sort_order:
+                  type: integer
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /admin/faq/{id}:
+    put:
+      tags: [Content Management]
+      summary: Update FAQ
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question:
+                  type: string
+                answer:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Content Management]
+      summary: Delete FAQ
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /admin/settings/terms:
+    put:
+      tags: [Content Management]
+      summary: Update Terms & Conditions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: HTML content
+                version:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /admin/settings/privacy:
+    put:
+      tags: [Content Management]
+      summary: Update Privacy Policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: HTML content
+                version:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== SUPPORT MANAGEMENT ====================
+  /support/tickets:
+    get:
+      tags: [Support Management]
+      summary: List all support tickets
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, closed]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, normal, high, urgent]
+      responses:
+        '200':
+          description: Tickets list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SupportTicket'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ==================== NOTIFICATION MANAGEMENT ====================
+  /admin/notifications/send:
+    post:
+      tags: [Notification Management]
+      summary: Send notification to specific user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, title, message]
+              properties:
+                user_id:
+                  type: integer
+                title:
+                  type: string
+                message:
+                  type: string
+                type:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /admin/notifications/broadcast:
+    post:
+      tags: [Notification Management]
+      summary: Broadcast notification to all users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message]
+              properties:
+                title:
+                  type: string
+                message:
+                  type: string
+                type:
+                  type: string
+                  example: promo
+                filter:
+                  type: object
+                  description: Filter users by criteria
+                  properties:
+                    role:
+                      type: string
+                    is_active:
+                      type: boolean
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== REPORTS ====================
+  /reports/sales:
+    get:
+      tags: [Reports & Analytics]
+      summary: Get sales report
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+      responses:
+        '200':
+          description: Sales report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+
+  /reports/export:
+    post:
+      tags: [Reports & Analytics]
+      summary: Export report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [report_type, format]
+              properties:
+                report_type:
+                  type: string
+                  enum: [sales, revenue, orders, customers, products]
+                format:
+                  type: string
+                  enum: [csv, excel, pdf]
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: File download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      download_url:
+                        type: string
+                        format: uri
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    Success:
+      description: Success
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Unauthorized access
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            expires_in:
+              type: integer
+            user:
+              $ref: '#/components/schemas/User'
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        category_id:
+          type: integer
+        brand_id:
+          type: integer
+        sku:
+          type: string
+        list_price:
+          type: number
+        qty_available:
+          type: integer
+        is_active:
+          type: boolean
+        images:
+          type: array
+          description: Product images
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              url:
+                type: string
+                format: uri
+                example: https://cdn.pawsmart.com/products/image1.jpg
+              is_primary:
+                type: boolean
+                description: Indicates if this is the main product image
+              sort_order:
+                type: integer
+                description: Order to display the image
+
+    ProductInput:
+      type: object
+      required: [name, list_price]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category_id:
+          type: integer
+        brand_id:
+          type: integer
+        sku:
+          type: string
+        list_price:
+          type: number
+        qty_available:
+          type: integer
+
+    ProductListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ProductCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        display_name:
+          type: string
+
+    ProductBrand:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: string
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        user_id:
+          type: integer
+        order_date:
+          type: string
+          format: date-time
+        state:
+          type: string
+        amount_total:
+          type: number
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: integer
+        payment_method:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+
+    Promotion:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        discount_value:
+          type: number
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    PromotionInput:
+      type: object
+      required: [code, name, discount_value]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        discount_type:
+          type: string
+          enum: [percentage, fixed]
+        discount_value:
+          type: number
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    Voucher:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        status:
+          type: string
+        user_id:
+          type: integer
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tenant_type:
+          type: string
+        is_verified:
+          type: boolean
+        is_active:
+          type: boolean
+
+    TenantInput:
+      type: object
+      required: [name, tenant_type]
+      properties:
+        name:
+          type: string
+        tenant_type:
+          type: string
+          enum: [grooming, hotel, doctor]
+        email:
+          type: string
+        phone:
+          type: string
+
+    FAQ:
+      type: object
+      properties:
+        id:
+          type: integer
+        question:
+          type: string
+        answer:
+          type: string
+
+    SupportTicket:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticket_number:
+          type: string
+        subject:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string

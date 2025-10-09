@@ -1,0 +1,2961 @@
+openapi: 3.0.3
+info:
+  title: PawSmart API Documentation
+  description: |
+    Complete REST API documentation for PawSmart standalone backend.
+    This API serves PawSmartMobile (Customer App), CMS (Admin Dashboard), and Tenant apps (Grooming, Hotel, Doctor).
+
+    ## Authentication
+    Most endpoints require JWT Bearer token authentication.
+    Include the token in the Authorization header: `Bearer {token}`
+
+    ## Rate Limiting
+    - 100 requests per minute per user
+    - 1000 requests per hour per user
+
+    ## Pagination
+    List endpoints support pagination with query parameters:
+    - `page` (default: 1)
+    - `limit` (default: 20, max: 100)
+
+  version: 1.0.0
+  contact:
+    name: PawSmart API Support
+    email: api@pawsmart.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.pawsmart.com/v1
+    description: Production Server
+  - url: https://staging-api.pawsmart.com/v1
+    description: Staging Server
+  - url: http://localhost:3000/v1
+    description: Development Server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Users
+    description: User management
+  - name: Pets
+    description: Pet management
+  - name: Products
+    description: Product catalog and management
+  - name: Cart
+    description: Shopping cart operations
+  - name: Orders
+    description: Order management
+  - name: Payments
+    description: Payment processing
+  - name: Addresses
+    description: Address management
+  - name: Locations
+    description: Location and delivery services
+  - name: Doctors
+    description: Doctor services and appointments
+  - name: Grooming
+    description: Grooming services and bookings
+  - name: Hotel
+    description: Pet boarding services
+  - name: Promotions
+    description: Promotions and vouchers
+  - name: Notifications
+    description: Notification management
+  - name: Activities
+    description: User activity feed
+  - name: Loyalty
+    description: Loyalty points and rewards
+  - name: Reviews
+    description: Reviews and ratings
+  - name: Search
+    description: Search functionality
+  - name: FAQ
+    description: FAQ and support tickets
+  - name: Settings
+    description: App settings and configuration
+  - name: Admin
+    description: Admin dashboard and management
+  - name: Tenants
+    description: Tenant management
+  - name: Reports
+    description: Reports and analytics
+  - name: Media
+    description: File upload and management
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== AUTHENTICATION ====================
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Create a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - name
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  pattern: '^[0-9]{10,15}$'
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                name:
+                  type: string
+                  minLength: 2
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with username/email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: Username or email
+                password:
+                  type: string
+                  format: password
+                database:
+                  type: string
+                  description: Optional database name
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Logout and invalidate current token
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      expires_in:
+                        type: integer
+
+  /auth/verify-otp:
+    post:
+      tags:
+        - Authentication
+      summary: Verify OTP code
+      description: Verify OTP for 2FA authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - code
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 6
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/resend-otp:
+    post:
+      tags:
+        - Authentication
+      summary: Resend OTP code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/forgot-username:
+    post:
+      tags:
+        - Authentication
+      summary: Request username recovery
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/social/google:
+    post:
+      tags:
+        - Authentication
+      summary: Login with Google
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/social/facebook:
+    post:
+      tags:
+        - Authentication
+      summary: Login with Facebook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/social/apple:
+    post:
+      tags:
+        - Authentication
+      summary: Login with Apple
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+  /auth/change-password:
+    put:
+      tags:
+        - Authentication
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_password
+                - new_password
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== USERS ====================
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+  /users/profile/avatar:
+    patch:
+      tags:
+        - Users
+      summary: Update profile photo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /users/account:
+    delete:
+      tags:
+        - Users
+      summary: Delete user account
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+    put:
+      tags:
+        - Users
+      summary: Update user (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List all users (Admin)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [customer, admin, tenant]
+      responses:
+        '200':
+          description: Users list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /users/{id}/status:
+    patch:
+      tags:
+        - Users
+      summary: Activate/deactivate user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PETS ====================
+  /pets:
+    get:
+      tags:
+        - Pets
+      summary: Get all pets for current user
+      responses:
+        '200':
+          description: Pets list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pet'
+
+    post:
+      tags:
+        - Pets
+      summary: Add new pet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetInput'
+      responses:
+        '201':
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pet'
+
+  /pets/{id}:
+    get:
+      tags:
+        - Pets
+      summary: Get pet details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pet details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pet'
+
+    put:
+      tags:
+        - Pets
+      summary: Update pet information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Pets
+      summary: Delete pet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/photo:
+    patch:
+      tags:
+        - Pets
+      summary: Update pet photo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/medical-history:
+    get:
+      tags:
+        - Pets
+      summary: Get pet medical records
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Medical records retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MedicalRecord'
+
+    post:
+      tags:
+        - Pets
+      summary: Add medical record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicalRecordInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/vaccinations:
+    get:
+      tags:
+        - Pets
+      summary: Get vaccination records
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Vaccination records retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vaccination'
+
+    post:
+      tags:
+        - Pets
+      summary: Add vaccination record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/vaccinations/{vaccId}:
+    put:
+      tags:
+        - Pets
+      summary: Update vaccination
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: vaccId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Pets
+      summary: Delete vaccination
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: vaccId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PRODUCTS ====================
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Get all products with filters
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+        - name: brand_id
+          in: query
+          schema:
+            type: integer
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: in_stock
+          in: query
+          schema:
+            type: boolean
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [name, price_asc, price_desc, rating, newest]
+      responses:
+        '200':
+          description: Products list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags:
+        - Products
+      summary: Create new product (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Product'
+
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Product'
+
+    put:
+      tags:
+        - Products
+      summary: Update product (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Products
+      summary: Delete product (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /products/{id}/stock:
+    patch:
+      tags:
+        - Products
+      summary: Update product stock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /products/categories:
+    get:
+      tags:
+        - Products
+      summary: Get product categories
+      responses:
+        '200':
+          description: Categories list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductCategory'
+
+    post:
+      tags:
+        - Products
+      summary: Create category (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                display_name:
+                  type: string
+                parent_id:
+                  type: integer
+                description:
+                  type: string
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /products/categories/{id}:
+    put:
+      tags:
+        - Products
+      summary: Update category (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                display_name:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Products
+      summary: Delete category (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /products/brands:
+    get:
+      tags:
+        - Products
+      summary: Get product brands
+      responses:
+        '200':
+          description: Brands list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductBrand'
+
+    post:
+      tags:
+        - Products
+      summary: Create brand (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                logo:
+                  type: string
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /products/search:
+    get:
+      tags:
+        - Products
+      summary: Search products
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  /products/recommended:
+    get:
+      tags:
+        - Products
+      summary: Get recommended products
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Recommended products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  /products/best-sellers:
+    get:
+      tags:
+        - Products
+      summary: Get best-selling products
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Best-selling products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  /products/{id}/reviews:
+    get:
+      tags:
+        - Products
+      summary: Get product reviews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Reviews list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+
+    post:
+      tags:
+        - Products
+      summary: Add product review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  # ==================== CART ====================
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Get user's cart
+      responses:
+        '200':
+          description: Cart retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Cart'
+
+    delete:
+      tags:
+        - Cart
+      summary: Clear entire cart
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - quantity
+              properties:
+                product_id:
+                  type: integer
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /cart/items/{itemId}:
+    put:
+      tags:
+        - Cart
+      summary: Update cart item quantity
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Cart
+      summary: Remove item from cart
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /cart/validate:
+    post:
+      tags:
+        - Cart
+      summary: Validate cart before checkout
+      responses:
+        '200':
+          description: Cart validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      is_valid:
+                        type: boolean
+                      errors:
+                        type: array
+                        items:
+                          type: string
+
+  /cart/summary:
+    get:
+      tags:
+        - Cart
+      summary: Get cart summary with totals
+      responses:
+        '200':
+          description: Cart summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+
+  # ==================== ORDERS ====================
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get user's order history
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, sale, done, cancel, waiting_payment, processing, shipped, delivered]
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags:
+        - Orders
+      summary: Create new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInput'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Order'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get order details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Order'
+
+    put:
+      tags:
+        - Orders
+      summary: Update order (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Orders
+      summary: Cancel order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /orders/{id}/status:
+    patch:
+      tags:
+        - Orders
+      summary: Update order status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [draft, sale, done, cancel, waiting_payment, payment_confirmed, processing, shipped, delivered]
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /orders/{id}/tracking:
+    get:
+      tags:
+        - Orders
+      summary: Get order tracking info
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tracking info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/OrderTracking'
+
+  /orders/{id}/cancel:
+    post:
+      tags:
+        - Orders
+      summary: Cancel order with reason
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /orders/history:
+    get:
+      tags:
+        - Orders
+      summary: Get order history
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Order history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+  /orders/active:
+    get:
+      tags:
+        - Orders
+      summary: Get active orders
+      responses:
+        '200':
+          description: Active orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+  /orders/{id}/confirm:
+    post:
+      tags:
+        - Orders
+      summary: Confirm order completion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /orders/{id}/return:
+    post:
+      tags:
+        - Orders
+      summary: Request order return
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PAYMENTS ====================
+  /payments/methods:
+    get:
+      tags:
+        - Payments
+      summary: Get available payment methods
+      responses:
+        '200':
+          description: Payment methods
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PaymentMethod'
+
+  /payments/create:
+    post:
+      tags:
+        - Payments
+      summary: Create payment intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+                - payment_method
+              properties:
+                order_id:
+                  type: integer
+                payment_method:
+                  type: string
+                  enum: [va, ewallet, qr, credit_card]
+                payment_channel:
+                  type: string
+      responses:
+        '201':
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Payment'
+
+  /payments/confirm:
+    post:
+      tags:
+        - Payments
+      summary: Confirm payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - payment_id
+              properties:
+                payment_id:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /payments/{id}:
+    get:
+      tags:
+        - Payments
+      summary: Get payment details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Payment'
+
+  /payments/{id}/status:
+    get:
+      tags:
+        - Payments
+      summary: Check payment status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [pending, processing, success, failed, expired]
+
+  /payments/webhook:
+    post:
+      tags:
+        - Payments
+      summary: Payment gateway webhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook processed
+
+  /payments/virtual-account:
+    post:
+      tags:
+        - Payments
+      summary: Generate virtual account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+                - bank_code
+              properties:
+                order_id:
+                  type: integer
+                bank_code:
+                  type: string
+                  enum: [BCA, MANDIRI, BNI, BRI, PERMATA]
+      responses:
+        '201':
+          description: Virtual account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      account_number:
+                        type: string
+                      bank_code:
+                        type: string
+                      expires_at:
+                        type: string
+                        format: date-time
+
+  /payments/qr-code:
+    post:
+      tags:
+        - Payments
+      summary: Generate QR payment code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+              properties:
+                order_id:
+                  type: integer
+      responses:
+        '201':
+          description: QR code generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      qr_code_url:
+                        type: string
+                      expires_at:
+                        type: string
+                        format: date-time
+
+  /payments/ewallet:
+    post:
+      tags:
+        - Payments
+      summary: Process e-wallet payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+                - ewallet_type
+              properties:
+                order_id:
+                  type: integer
+                ewallet_type:
+                  type: string
+                  enum: [OVO, GOPAY, DANA, LINKAJA, SHOPEEPAY]
+                phone:
+                  type: string
+      responses:
+        '201':
+          description: E-wallet payment initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      payment_url:
+                        type: string
+                      expires_at:
+                        type: string
+                        format: date-time
+
+  /payments/history:
+    get:
+      tags:
+        - Payments
+      summary: Get payment history
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payment'
+
+  /payments/{id}/refund:
+    post:
+      tags:
+        - Payments
+      summary: Process refund
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                reason:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== ADDRESSES ====================
+  /addresses:
+    get:
+      tags:
+        - Addresses
+      summary: Get user's addresses
+      responses:
+        '200':
+          description: Addresses list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Address'
+
+    post:
+      tags:
+        - Addresses
+      summary: Add new address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /addresses/{id}:
+    get:
+      tags:
+        - Addresses
+      summary: Get address details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Address details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Address'
+
+    put:
+      tags:
+        - Addresses
+      summary: Update address
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags:
+        - Addresses
+      summary: Delete address
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /addresses/{id}/default:
+    patch:
+      tags:
+        - Addresses
+      summary: Set as default address
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /addresses/provinces:
+    get:
+      tags:
+        - Addresses
+      summary: Get provinces list
+      responses:
+        '200':
+          description: Provinces list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        name:
+                          type: string
+
+  /addresses/cities/{provinceId}:
+    get:
+      tags:
+        - Addresses
+      summary: Get cities by province
+      parameters:
+        - name: provinceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cities list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        type:
+                          type: string
+
+  /addresses/districts/{cityId}:
+    get:
+      tags:
+        - Addresses
+      summary: Get districts by city
+      parameters:
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Districts list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        name:
+                          type: string
+
+  /addresses/subdistricts/{districtId}:
+    get:
+      tags:
+        - Addresses
+      summary: Get subdistricts
+      parameters:
+        - name: districtId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subdistricts list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        postal_code:
+                          type: string
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Authorization header using the Bearer scheme
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  responses:
+    Success:
+      description: Operation successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessResponse'
+
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            expires_in:
+              type: integer
+            user:
+              $ref: '#/components/schemas/User'
+
+    SocialLoginRequest:
+      type: object
+      required:
+        - provider
+        - access_token
+      properties:
+        provider:
+          type: string
+          enum: [google, facebook, apple]
+        access_token:
+          type: string
+        id_token:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        avatar:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin, tenant]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Pet:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [dog, cat, bird, fish, rabbit, hamster, other]
+        breed:
+          type: string
+        age:
+          type: integer
+        weight:
+          type: number
+        color:
+          type: string
+        gender:
+          type: string
+          enum: [male, female]
+        microchip_id:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        photo:
+          type: string
+        medical_history:
+          type: string
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    PetInput:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [dog, cat, bird, fish, rabbit, hamster, other]
+        breed:
+          type: string
+        age:
+          type: integer
+        weight:
+          type: number
+        color:
+          type: string
+        gender:
+          type: string
+          enum: [male, female]
+        microchip_id:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    Vaccination:
+      type: object
+      properties:
+        id:
+          type: integer
+        pet_id:
+          type: integer
+        name:
+          type: string
+        vaccination_date:
+          type: string
+          format: date
+        next_due_date:
+          type: string
+          format: date
+        veterinarian:
+          type: string
+        notes:
+          type: string
+
+    VaccinationInput:
+      type: object
+      required:
+        - name
+        - vaccination_date
+      properties:
+        name:
+          type: string
+        vaccination_date:
+          type: string
+          format: date
+        next_due_date:
+          type: string
+          format: date
+        veterinarian:
+          type: string
+        notes:
+          type: string
+
+    MedicalRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        pet_id:
+          type: integer
+        doctor_id:
+          type: integer
+        record_date:
+          type: string
+          format: date
+        diagnosis:
+          type: string
+        symptoms:
+          type: string
+        treatment:
+          type: string
+        prescriptions:
+          type: array
+          items:
+            type: object
+        vital_signs:
+          type: object
+        notes:
+          type: string
+
+    MedicalRecordInput:
+      type: object
+      required:
+        - record_date
+        - diagnosis
+      properties:
+        doctor_id:
+          type: integer
+        record_date:
+          type: string
+          format: date
+        diagnosis:
+          type: string
+        symptoms:
+          type: string
+        treatment:
+          type: string
+        notes:
+          type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        category_id:
+          type: integer
+        brand_id:
+          type: integer
+        sku:
+          type: string
+        barcode:
+          type: string
+        list_price:
+          type: number
+        discount_percentage:
+          type: number
+        qty_available:
+          type: integer
+        image_128:
+          type: string
+        rating:
+          type: number
+        is_recommended:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ProductInput:
+      type: object
+      required:
+        - name
+        - list_price
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category_id:
+          type: integer
+        brand_id:
+          type: integer
+        sku:
+          type: string
+        list_price:
+          type: number
+        qty_available:
+          type: integer
+
+    ProductCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        display_name:
+          type: string
+        parent_id:
+          type: integer
+        description:
+          type: string
+        image:
+          type: string
+
+    ProductBrand:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: string
+        description:
+          type: string
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total_items:
+          type: integer
+        subtotal:
+          type: number
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+        subtotal:
+          type: number
+
+    CartSummary:
+      type: object
+      properties:
+        subtotal:
+          type: number
+        tax:
+          type: number
+        shipping:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        user_id:
+          type: integer
+        order_date:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum: [draft, sale, done, cancel]
+        custom_status:
+          type: string
+        amount_total:
+          type: number
+        payment_status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLine'
+
+    OrderInput:
+      type: object
+      required:
+        - delivery_address_id
+        - items
+      properties:
+        delivery_address_id:
+          type: integer
+        payment_method:
+          type: string
+        voucher_code:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: integer
+              quantity:
+                type: integer
+
+    OrderLine:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        quantity:
+          type: number
+        price_unit:
+          type: number
+        price_total:
+          type: number
+
+    OrderTracking:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        status:
+          type: string
+        tracking_number:
+          type: string
+        courier:
+          type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+              description:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: integer
+        payment_reference:
+          type: string
+        payment_method:
+          type: string
+        payment_channel:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+        virtual_account_number:
+          type: string
+        qr_code_url:
+          type: string
+        payment_url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+
+    PaymentMethod:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [va, ewallet, qr, credit_card]
+        channels:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              name:
+                type: string
+              icon:
+                type: string
+
+    Address:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        recipient_name:
+          type: string
+        phone:
+          type: string
+        address_line1:
+          type: string
+        address_line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        is_default:
+          type: boolean
+
+    AddressInput:
+      type: object
+      required:
+        - recipient_name
+        - phone
+        - address_line1
+        - city
+        - state
+      properties:
+        label:
+          type: string
+        recipient_name:
+          type: string
+        phone:
+          type: string
+        address_line1:
+          type: string
+        address_line2:
+          type: string
+        district:
+          type: string
+        subdistrict:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        is_default:
+          type: boolean
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        user_name:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        comment:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        is_verified_purchase:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ReviewInput:
+      type: object
+      required:
+        - rating
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        comment:
+          type: string

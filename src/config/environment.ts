@@ -4,7 +4,11 @@ const isEASBuild = process.env.EAS_BUILD === 'true';
 const isProduction = process.env.NODE_ENV === 'production';
 
 export const config = {
-  // Odoo Server Configuration
+  // API Server Configuration (Migration from Odoo to Standalone API)
+  // Set USE_STANDALONE_API=true to use the new REST API instead of Odoo
+  USE_STANDALONE_API: 'true',
+
+  // Legacy Odoo Server Configuration (kept for backward compatibility)
   ODOO: {
     BASE_URL: process.env.EXPO_PUBLIC_ODOO_URL ||
       (__DEV__
@@ -16,6 +20,16 @@ export const config = {
     PASSWORD: process.env.EXPO_PUBLIC_ODOO_PASSWORD || 'admin',
     API_KEY: process.env.EXPO_PUBLIC_ODOO_API_KEY || 'bd598ce6e94176c354da8333ea381b854617175f',
     API_VERSION: process.env.EXPO_PUBLIC_API_VERSION || 'v1',
+  },
+
+  // Standalone API Configuration
+  STANDALONE_API: {
+    BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL ||
+      (__DEV__
+        ? 'http://43.157.209.126:3001/api/v1'     // Development API
+        : 'https://api.pawsmart.com/v1'), // Production API
+    JWT_SECRET: process.env.EXPO_PUBLIC_JWT_SECRET || 'your-jwt-secret-key',
+    TOKEN_REFRESH_THRESHOLD: 300, // Refresh token 5 minutes before expiry
   },
   
   // Payment Gateway Configuration
@@ -116,7 +130,9 @@ export const config = {
     RETRY_DELAY: 1000, // 1 second
     RETRY_MULTIPLIER: 2,
     // Allow HTTP traffic to specific domains
-    ALLOWED_HTTP_DOMAINS: ['103.67.244.254'],
+    ALLOWED_HTTP_DOMAINS: ['103.67.244.254', 'localhost', '127.0.0.1'],
+    // Allow HTTPS domains for standalone API
+    ALLOWED_HTTPS_DOMAINS: ['api.pawsmart.com', 'staging-api.pawsmart.com'],
   },
   
   // Storage Keys
@@ -154,14 +170,25 @@ export const config = {
   IS_PRODUCTION: isProduction,
 };
 
-// Helper function to get Odoo API URL
+// Helper function to get Odoo API URL (Legacy)
 export const getOdooUrl = (endpoint: string = ''): string => {
   return `${config.ODOO.BASE_URL}${endpoint}`;
 };
 
-// Helper function to get full JSON-RPC URL
+// Helper function to get full JSON-RPC URL (Legacy)
 export const getJsonRpcUrl = (): string => {
   return `${config.ODOO.BASE_URL}/jsonrpc`;
+};
+
+// Helper function to get API base URL (new standalone API)
+export const getApiBaseUrl = (): string => {
+  return config.USE_STANDALONE_API ? config.STANDALONE_API.BASE_URL : config.ODOO.BASE_URL;
+};
+
+// Helper function to get API endpoint URL
+export const getApiUrl = (endpoint: string = ''): string => {
+  const baseUrl = getApiBaseUrl();
+  return `${baseUrl}${endpoint}`;
 };
 
 // Helper function to check if development mode

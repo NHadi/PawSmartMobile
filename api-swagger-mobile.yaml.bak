@@ -1,0 +1,1486 @@
+openapi: 3.0.3
+info:
+  title: PawSmart Mobile API Documentation
+  description: |
+    REST API documentation for **PawSmartMobile** (Customer Mobile App).
+
+    This API serves the customer-facing mobile application for pet owners who want to:
+    - Shop for pet products
+    - Book grooming, hotel, and doctor services
+    - Manage their pets
+    - Track orders and payments
+    - Access loyalty rewards and promotions
+
+    ## Authentication
+    Most endpoints require JWT Bearer token authentication.
+    Include the token in the Authorization header: `Bearer {token}`
+
+    ## Rate Limiting
+    - 100 requests per minute per user
+    - 1000 requests per hour per user
+
+  version: 1.0.0
+  contact:
+    name: PawSmart Mobile Support
+    email: mobile-support@pawsmart.com
+
+servers:
+  - url: https://api.pawsmart.com/v1
+    description: Production Server
+  - url: https://staging-api.pawsmart.com/v1
+    description: Staging Server
+  - url: http://localhost:3000/v1
+    description: Development Server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: User Profile
+    description: User profile management
+  - name: Pets
+    description: Pet management
+  - name: Products
+    description: Product browsing and search
+  - name: Shopping Cart
+    description: Shopping cart operations
+  - name: Orders
+    description: Order placement and tracking
+  - name: Payments
+    description: Payment processing
+  - name: Addresses
+    description: Delivery address management
+  - name: Doctor Services
+    description: Veterinary appointments
+  - name: Grooming Services
+    description: Pet grooming bookings
+  - name: Hotel Services
+    description: Pet boarding bookings
+  - name: Promotions
+    description: Vouchers and promotions
+  - name: Notifications
+    description: Push notifications
+  - name: Activity Feed
+    description: User activity timeline
+  - name: Loyalty & Rewards
+    description: Points and rewards
+  - name: Reviews
+    description: Product and service reviews
+  - name: Support
+    description: FAQ and help tickets
+  - name: Settings
+    description: App settings
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== AUTHENTICATION ====================
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, name, phone]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  example: johndoe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                phone:
+                  type: string
+                  pattern: '^[0-9]{10,15}$'
+                  example: '081234567890'
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                name:
+                  type: string
+                  example: John Doe
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  description: Username, email, or phone number
+                  example: johndoe
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      expires_in:
+                        type: integer
+
+  /auth/verify-otp:
+    post:
+      tags: [Authentication]
+      summary: Verify OTP code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone:
+                  type: string
+                  example: '081234567890'
+                code:
+                  type: string
+                  example: '123456'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/resend-otp:
+    post:
+      tags: [Authentication]
+      summary: Resend OTP code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/forgot-username:
+    post:
+      tags: [Authentication]
+      summary: Recover username
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /auth/social/google:
+    post:
+      tags: [Authentication]
+      summary: Login with Google
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/social/facebook:
+    post:
+      tags: [Authentication]
+      summary: Login with Facebook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/social/apple:
+    post:
+      tags: [Authentication]
+      summary: Login with Apple
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+  /auth/change-password:
+    put:
+      tags: [Authentication]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== USER PROFILE ====================
+  /users/profile:
+    get:
+      tags: [User Profile]
+      summary: Get user profile
+      responses:
+        '200':
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+    put:
+      tags: [User Profile]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /users/profile/avatar:
+    patch:
+      tags: [User Profile]
+      summary: Update profile photo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /users/account:
+    delete:
+      tags: [User Profile]
+      summary: Delete account
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PETS ====================
+  /pets:
+    get:
+      tags: [Pets]
+      summary: Get all my pets
+      responses:
+        '200':
+          description: Pets list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pet'
+
+    post:
+      tags: [Pets]
+      summary: Add new pet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetInput'
+      responses:
+        '201':
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pet'
+
+  /pets/{id}:
+    get:
+      tags: [Pets]
+      summary: Get pet details
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          description: Pet details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pet'
+
+    put:
+      tags: [Pets]
+      summary: Update pet information
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Pets]
+      summary: Delete pet
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/photo:
+    patch:
+      tags: [Pets]
+      summary: Update pet photo
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/medical-history:
+    get:
+      tags: [Pets]
+      summary: Get pet medical records
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          description: Medical records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MedicalRecord'
+
+  /pets/{id}/vaccinations:
+    get:
+      tags: [Pets]
+      summary: Get vaccination records
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          description: Vaccination records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vaccination'
+
+    post:
+      tags: [Pets]
+      summary: Add vaccination record
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /pets/{id}/vaccinations/{vaccId}:
+    put:
+      tags: [Pets]
+      summary: Update vaccination
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+        - name: vaccId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaccinationInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Pets]
+      summary: Delete vaccination
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+        - name: vaccId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  # ==================== PRODUCTS ====================
+  /products:
+    get:
+      tags: [Products]
+      summary: Browse products
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+        - name: brand_id
+          in: query
+          schema:
+            type: integer
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: in_stock
+          in: query
+          schema:
+            type: boolean
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [name, price_asc, price_desc, rating, newest]
+      responses:
+        '200':
+          description: Products list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Product'
+
+  /products/categories:
+    get:
+      tags: [Products]
+      summary: Get product categories
+      responses:
+        '200':
+          description: Categories list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductCategory'
+
+  /products/brands:
+    get:
+      tags: [Products]
+      summary: Get product brands
+      responses:
+        '200':
+          description: Brands list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductBrand'
+
+  /products/search:
+    get:
+      tags: [Products]
+      summary: Search products
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          example: royal canin
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+
+  /products/recommended:
+    get:
+      tags: [Products]
+      summary: Get recommended products
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Recommended products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+
+  /products/best-sellers:
+    get:
+      tags: [Products]
+      summary: Get best-selling products
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Best sellers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+
+  /products/{id}/reviews:
+    get:
+      tags: [Products]
+      summary: Get product reviews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Reviews list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Products]
+      summary: Add product review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  # ==================== SHOPPING CART ====================
+  /cart:
+    get:
+      tags: [Shopping Cart]
+      summary: Get shopping cart
+      responses:
+        '200':
+          description: Cart retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Cart'
+
+    delete:
+      tags: [Shopping Cart]
+      summary: Clear cart
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /cart/items:
+    post:
+      tags: [Shopping Cart]
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, quantity]
+              properties:
+                product_id:
+                  type: integer
+                  example: 123
+                quantity:
+                  type: integer
+                  minimum: 1
+                  example: 2
+      responses:
+        '201':
+          $ref: '#/components/responses/Success'
+
+  /cart/items/{itemId}:
+    put:
+      tags: [Shopping Cart]
+      summary: Update cart item quantity
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+    delete:
+      tags: [Shopping Cart]
+      summary: Remove item from cart
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /cart/validate:
+    post:
+      tags: [Shopping Cart]
+      summary: Validate cart before checkout
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      is_valid:
+                        type: boolean
+                      errors:
+                        type: array
+                        items:
+                          type: string
+
+  /cart/summary:
+    get:
+      tags: [Shopping Cart]
+      summary: Get cart summary
+      responses:
+        '200':
+          description: Cart summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CartSummary'
+
+  # Continue with Orders, Payments, Addresses, Services, etc...
+  # Due to length, I'll include key endpoints
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+    PetId:
+      name: id
+      in: path
+      required: true
+      description: Pet ID
+      schema:
+        type: integer
+
+  responses:
+    Success:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessResponse'
+
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation successful
+        data:
+          type: object
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 150
+        totalPages:
+          type: integer
+          example: 8
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            expires_in:
+              type: integer
+              example: 3600
+            user:
+              $ref: '#/components/schemas/User'
+
+    SocialLoginRequest:
+      type: object
+      required: [provider, access_token]
+      properties:
+        provider:
+          type: string
+          enum: [google, facebook, apple]
+        access_token:
+          type: string
+        id_token:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          example: john@example.com
+        name:
+          type: string
+          example: John Doe
+        phone:
+          type: string
+          example: '081234567890'
+        avatar:
+          type: string
+          format: uri
+        role:
+          type: string
+          enum: [customer]
+          example: customer
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+
+    Pet:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Buddy
+        type:
+          type: string
+          enum: [dog, cat, bird, fish, rabbit, hamster, other]
+          example: dog
+        breed:
+          type: string
+          example: Golden Retriever
+        age:
+          type: integer
+          example: 3
+        weight:
+          type: number
+          example: 25.5
+        color:
+          type: string
+          example: Golden
+        gender:
+          type: string
+          enum: [male, female]
+          example: male
+        microchip_id:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        photo:
+          type: string
+          format: uri
+        medical_history:
+          type: string
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    PetInput:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          example: Buddy
+        type:
+          type: string
+          enum: [dog, cat, bird, fish, rabbit, hamster, other]
+          example: dog
+        breed:
+          type: string
+        age:
+          type: integer
+        weight:
+          type: number
+        color:
+          type: string
+        gender:
+          type: string
+          enum: [male, female]
+        microchip_id:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    Vaccination:
+      type: object
+      properties:
+        id:
+          type: integer
+        pet_id:
+          type: integer
+        name:
+          type: string
+          example: Rabies Vaccine
+        vaccination_date:
+          type: string
+          format: date
+        next_due_date:
+          type: string
+          format: date
+        veterinarian:
+          type: string
+        notes:
+          type: string
+
+    VaccinationInput:
+      type: object
+      required: [name, vaccination_date]
+      properties:
+        name:
+          type: string
+        vaccination_date:
+          type: string
+          format: date
+        next_due_date:
+          type: string
+          format: date
+        veterinarian:
+          type: string
+        notes:
+          type: string
+
+    MedicalRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        pet_id:
+          type: integer
+        doctor_id:
+          type: integer
+        doctor_name:
+          type: string
+        record_date:
+          type: string
+          format: date
+        diagnosis:
+          type: string
+        symptoms:
+          type: string
+        treatment:
+          type: string
+        prescriptions:
+          type: array
+          items:
+            type: object
+        vital_signs:
+          type: object
+        notes:
+          type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        name:
+          type: string
+          example: Royal Canin Adult Dog Food
+        description:
+          type: string
+        category_id:
+          type: integer
+        category_name:
+          type: string
+          example: Dog Food
+        brand_id:
+          type: integer
+        brand_name:
+          type: string
+          example: Royal Canin
+        sku:
+          type: string
+          example: RC-DOG-001
+        list_price:
+          type: number
+          example: 450000
+        discount_percentage:
+          type: number
+          example: 10
+        final_price:
+          type: number
+          example: 405000
+        qty_available:
+          type: integer
+          example: 50
+        image_128:
+          type: string
+          format: uri
+        rating:
+          type: number
+          example: 4.5
+        review_count:
+          type: integer
+          example: 125
+        is_recommended:
+          type: boolean
+
+    ProductListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ProductCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        display_name:
+          type: string
+        image:
+          type: string
+          format: uri
+
+    ProductBrand:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: string
+          format: uri
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total_items:
+          type: integer
+          example: 3
+        subtotal:
+          type: number
+          example: 850000
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        product_image:
+          type: string
+          format: uri
+        quantity:
+          type: integer
+        price:
+          type: number
+        discount:
+          type: number
+        subtotal:
+          type: number
+
+    CartSummary:
+      type: object
+      properties:
+        subtotal:
+          type: number
+          example: 850000
+        tax:
+          type: number
+          example: 85000
+        shipping:
+          type: number
+          example: 15000
+        discount:
+          type: number
+          example: 50000
+        total:
+          type: number
+          example: 900000
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        user_name:
+          type: string
+        user_avatar:
+          type: string
+          format: uri
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        comment:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        is_verified_purchase:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ReviewInput:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        comment:
+          type: string
