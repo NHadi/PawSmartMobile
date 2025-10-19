@@ -450,6 +450,102 @@ class StandaloneAuthService {
       return null;
     }
   }
+
+  /**
+   * Check if username is available
+   * Matches GET /auth/check-username?username={username} endpoint
+   */
+  async checkUsernameAvailability(username: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/check-username?username=${encodeURIComponent(username)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If endpoint doesn't exist, assume username is available (for development)
+        if (response.status === 404) {
+          console.warn('Username check endpoint not available, assuming available');
+          return true;
+        }
+        throw new Error(data.message || 'Username check failed');
+      }
+
+      return data.success ? data.available : true;
+    } catch (error: any) {
+      // Log error but don't block registration
+      console.warn('Username availability check failed:', error.message);
+      return true; // Assume available to not block registration
+    }
+  }
+
+  /**
+   * Check if email is available
+   * Matches GET /auth/check-email?email={email} endpoint
+   */
+  async checkEmailAvailability(email: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/check-email?email=${encodeURIComponent(email)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If endpoint doesn't exist, assume email is available (for development)
+        if (response.status === 404) {
+          console.warn('Email check endpoint not available, assuming available');
+          return true;
+        }
+        throw new Error(data.message || 'Email check failed');
+      }
+
+      return data.success ? data.available : true;
+    } catch (error: any) {
+      // Log error but don't block registration
+      console.warn('Email availability check failed:', error.message);
+      return true; // Assume available to not block registration
+    }
+  }
+
+  /**
+   * Check if phone number is already registered
+   * Matches GET /auth/check-phone?phone={phone} endpoint
+   */
+  async checkPhoneNumberRegistered(phoneNumber: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/check-phone?phone=${encodeURIComponent(phoneNumber)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If endpoint doesn't exist, assume phone is not registered (for development)
+        if (response.status === 404) {
+          console.warn('Phone check endpoint not available, assuming not registered');
+          return false;
+        }
+        throw new Error(data.message || 'Phone check failed');
+      }
+
+      return data.success ? data.registered : false;
+    } catch (error: any) {
+      // Log error but don't block registration
+      console.warn('Phone registration check failed:', error.message);
+      return false; // Assume not registered to not block registration
+    }
+  }
 }
 
 export default new StandaloneAuthService();

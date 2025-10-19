@@ -119,6 +119,85 @@ paths:
         '409':
           description: User already exists
 
+  /auth/check-username:
+    get:
+      tags: [Authentication]
+      summary: Check if username is available
+      security: []
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Username to check
+      responses:
+        '200':
+          description: Username availability check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  available:
+                    type: boolean
+                    description: true if username is available, false if taken
+
+  /auth/check-email:
+    get:
+      tags: [Authentication]
+      summary: Check if email is available
+      security: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+          description: Email to check
+      responses:
+        '200':
+          description: Email availability check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  available:
+                    type: boolean
+                    description: true if email is available, false if registered
+
+  /auth/check-phone:
+    get:
+      tags: [Authentication]
+      summary: Check if phone number is already registered
+      security: []
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Phone number to check
+      responses:
+        '200':
+          description: Phone registration check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  registered:
+                    type: boolean
+                    description: true if phone is already registered, false if available
+
   /auth/login:
     post:
       tags: [Authentication]

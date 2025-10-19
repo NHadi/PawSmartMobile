@@ -22,7 +22,7 @@ import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/auth/authService';
+import standaloneAuthService from '../../services/auth/standaloneAuthService';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 type NavigationProp = StackNavigationProp<AuthStackParamList, 'Register'>;
@@ -91,7 +91,7 @@ export default function RegisterScreen() {
     try {
       // First check if phone number is already registered
       const phoneNumber = formData.phone.trim();
-      const isPhoneRegistered = await authService.checkPhoneNumberRegistered(phoneNumber);
+      const isPhoneRegistered = await standaloneAuthService.checkPhoneNumberRegistered(phoneNumber);
       
       if (isPhoneRegistered) {
         Alert.alert(
@@ -107,7 +107,7 @@ export default function RegisterScreen() {
       }
       
       // Check if username is already taken
-      const isUsernameAvailable = await authService.checkUsernameAvailability(formData.username.trim());
+      const isUsernameAvailable = await standaloneAuthService.checkUsernameAvailability(formData.username.trim());
       
       if (!isUsernameAvailable) {
         Alert.alert(
@@ -121,7 +121,7 @@ export default function RegisterScreen() {
       
       // Check if email is already registered (if provided)
       if (formData.email.trim() && !formData.email.includes('@petnexus.com')) {
-        const isEmailAvailable = await authService.checkEmailAvailability(formData.email.trim());
+        const isEmailAvailable = await standaloneAuthService.checkEmailAvailability(formData.email.trim());
         
         if (!isEmailAvailable) {
           Alert.alert(
@@ -299,7 +299,7 @@ export default function RegisterScreen() {
                         // Debounce the check
                         setTimeout(async () => {
                           try {
-                            const available = await authService.checkUsernameAvailability(text);
+                            const available = await standaloneAuthService.checkUsernameAvailability(text);
                             setUsernameAvailable(available);
                           } catch (error) {
                             } finally {
