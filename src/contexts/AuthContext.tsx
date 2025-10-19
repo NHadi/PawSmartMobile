@@ -231,10 +231,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(response.user);
 
         // Store token and user data for Odoo
-        if (response.access_token) {
+        if (response?.access_token) {
           await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.access_token);
         }
-        if (response.user) {
+        if (response?.user) {
           await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user));
         }
       }
@@ -301,7 +301,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsAuthenticated(true);
           setUser(response.user);
 
-          if (response.access_token) {
+          if (response?.access_token) {
             await AsyncStorage.setItem('@PawSmart:authToken', response.access_token);
           }
 
@@ -317,8 +317,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             avatar: socialResponse.user.picture,
           } as AuthUser;
 
-          await AsyncStorage.setItem(AUTH_TOKEN_KEY, socialResponse.accessToken);
-          await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(fallbackUser));
+          if (socialResponse?.accessToken) {
+            await AsyncStorage.setItem(AUTH_TOKEN_KEY, socialResponse.accessToken);
+          }
+          if (fallbackUser) {
+            await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(fallbackUser));
+          }
 
           setIsAuthenticated(true);
           setUser(fallbackUser);

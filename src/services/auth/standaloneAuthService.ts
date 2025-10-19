@@ -386,11 +386,25 @@ class StandaloneAuthService {
    * Store authentication data
    */
   private async storeAuthData(authData: LoginResponse): Promise<void> {
-    await AsyncStorage.setItem(AUTH_TOKEN_KEY, authData.access_token);
+    console.log('Storing auth data:', {
+      hasAccessToken: !!authData.access_token,
+      hasRefreshToken: !!authData.refresh_token,
+      hasUser: !!authData.user
+    });
+
+    if (authData.access_token) {
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, authData.access_token);
+    } else {
+      console.warn('No access_token in auth data, skipping storage');
+    }
+
     if (authData.refresh_token) {
       await AsyncStorage.setItem(REFRESH_TOKEN_KEY, authData.refresh_token);
     }
-    await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(authData.user));
+
+    if (authData.user) {
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(authData.user));
+    }
   }
 
   /**
