@@ -726,9 +726,9 @@ const styles = StyleSheet.create({
   headerBackground: {
     paddingBottom: 0,
   },
-  headerOverlay: {
+  headeroverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FF6900',
+    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     backgroundColor: 'transparent',
@@ -872,9 +872,9 @@ const styles = StyleSheet.create({
   carouselBackground: {
     paddingVertical: Spacing.lg,
   },
-  carouselOverlay: {
+  carouseloverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FF6900',
+    backgroundColor: '#FFFFFF',
   },
   carouselTitle: {
     fontSize: Typography.fontSize.lg,
