@@ -198,6 +198,84 @@ paths:
                     type: boolean
                     description: true if phone is already registered, false if available
 
+  /auth/generate-otp:
+    post:
+      tags: [Authentication]
+      summary: Generate OTP for phone verification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  description: Phone number to send OTP to
+      responses:
+        '200':
+          description: OTP generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  otp:
+                    type: string
+                    description: Generated OTP code (for development/testing)
+
+  /auth/verify-otp:
+    post:
+      tags: [Authentication]
+      summary: Verify OTP code and complete registration if needed
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp]
+              properties:
+                phone:
+                  type: string
+                  description: Phone number
+                otp:
+                  type: string
+                  description: OTP code received by user
+                registration_data:
+                  type: object
+                  description: Registration data to complete user registration
+                  properties:
+                    username:
+                      type: string
+                    password:
+                      type: string
+                    email:
+                      type: string
+                    name:
+                      type: string
+                    phone:
+                      type: string
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/AuthResponse'
+
   /auth/login:
     post:
       tags: [Authentication]

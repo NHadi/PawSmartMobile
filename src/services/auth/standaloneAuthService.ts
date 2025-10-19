@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/apiClient';
 import config from '../../config/environment';
+import whatsappService from '../whatsapp/whatsappService';
 
 // Storage keys
 const AUTH_TOKEN_KEY = config.STORAGE_KEYS.AUTH_TOKEN;
@@ -544,6 +545,110 @@ class StandaloneAuthService {
       // Log error but don't block registration
       console.warn('Phone registration check failed:', error.message);
       return false; // Assume not registered to not block registration
+    }
+  }
+
+  /**
+   * Generate OTP for phone verification
+   * Uses Fonnte WhatsApp service + local storage for verification
+   */
+  async generateOTP(phoneNumber: string): Promise<string> {
+    console.log(`🔄 Generating OTP for ${phoneNumber} using WhatsApp service`);
+
+    // Generate a 4-digit OTP
+    const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Store OTP locally for verification
+    const otpData = {
+      otp: otpCode,
+      expiresAt: Date.now() + (5 * 60 * 1000), // 5 minutes (WhatsApp standard)
+    };
+
+    await AsyncStorage.setItem(`@PawSmart:otp:${phoneNumber}`, JSON.stringify(otpData));
+    console.log(`💾 OTP stored locally: ${otpCode}`);
+
+    // Send OTP via WhatsApp (Fonnte service)
+    try {
+      console.log(`📱 Sending OTP via WhatsApp to ${phoneNumber}`);
+      const messageSent = await whatsappService.sendOTP(phoneNumber, otpCode);
+
+      if (messageSent) {
+        console.log(`✅ OTP sent successfully via WhatsApp to ${phoneNumber}`);
+        console.log(`📱 Check WhatsApp for OTP: ${otpCode}`);
+      } else {
+        console.warn(`⚠️ WhatsApp service failed, but OTP is still available locally`);
+        console.log(`💡 OTP (development fallback): ${otpCode}`);
+      }
+    } catch (error: any) {
+      console.error(`❌ WhatsApp service error:`, error.message);
+      console.log(`💡 OTP is still available for testing: ${otpCode}`);
+    }
+
+    return otpCode;
+  }
+
+  /**
+   * Verify OTP and complete registration if needed
+   * Uses local verification + standalone API for registration completion
+   */
+  async verifyOTP(data: {
+    phoneNumber: string;
+    otp: string;
+    registrationData?: any;
+  }): Promise<{ success: boolean; message?: string }> {
+    console.log(`🔍 Verifying OTP for ${data.phoneNumber}`);
+
+    try {
+      const storedData = await AsyncStorage.getItem(`@PawSmart:otp:${data.phoneNumber}`);
+      console.log(`📱 Looking for stored OTP for ${data.phoneNumber}`);
+
+      if (!storedData) {
+        console.warn(`❌ No OTP found in storage for phone: ${data.phoneNumber}`);
+        return { success: false, message: 'OTP tidak ditemukan' };
+      }
+
+      const otpData = JSON.parse(storedData);
+      console.log(`📋 Found stored OTP for ${data.phoneNumber}:`, {
+        otp: otpData.otp,
+        expiresAt: new Date(otpData.expiresAt).toISOString(),
+        timeRemaining: Math.max(0, otpData.expiresAt - Date.now()) + 'ms'
+      });
+
+      // Check if OTP is expired
+      if (Date.now() > otpData.expiresAt) {
+        await AsyncStorage.removeItem(`@PawSmart:otp:${data.phoneNumber}`);
+        console.warn(`⏰ OTP expired for ${data.phoneNumber}`);
+        return { success: false, message: 'OTP telah kadaluarsa' };
+      }
+
+      // Verify OTP
+      if (otpData.otp !== data.otp) {
+        console.warn(`❌ OTP mismatch for ${data.phoneNumber}. Expected: ${otpData.otp}, Received: ${data.otp}`);
+        return { success: false, message: 'Kode OTP tidak valid' };
+      }
+
+      console.log(`✅ OTP verified successfully for ${data.phoneNumber}`);
+
+      // If OTP is valid and we have registration data, complete registration in standalone API
+      if (data.registrationData) {
+        console.log(`🔄 Completing user registration for ${data.registrationData.username}...`);
+        try {
+          const registrationResult = await this.register(data.registrationData);
+          console.log('✅ Registration completed successfully');
+        } catch (error: any) {
+          console.error('❌ Registration completion failed:', error);
+          return { success: false, message: error.message || 'Registrasi gagal' };
+        }
+      }
+
+      // Clear OTP after successful verification
+      await AsyncStorage.removeItem(`@PawSmart:otp:${data.phoneNumber}`);
+      console.log(`🗑️ OTP cleared from storage for ${data.phoneNumber}`);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ OTP verification error:', error);
+      return { success: false, message: error.message || 'Verifikasi OTP gagal' };
     }
   }
 }

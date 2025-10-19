@@ -23,7 +23,7 @@ import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/auth/authService';
+import authService from '../../services/auth/unifiedAuthService';
 
 type NavigationProp = StackNavigationProp<AuthStackParamList, 'OTP'>;
 type RoutePropType = RouteProp<AuthStackParamList, 'OTP'>;
@@ -61,17 +61,33 @@ export default function OTPVerificationScreen() {
       });
     }, 1000);
 
-    // Send initial OTP via WhatsApp when screen loads (without alert)
+    // Send initial OTP via WhatsApp when screen loads
     const sendInitialOTP = async () => {
       try {
-        // Generate and send OTP
+        // Generate and send OTP via WhatsApp
         const otpCode = await authService.generateOTP(phoneNumber);
-        
-        // The OTP is now automatically sent via WhatsApp service
+
         console.log(`=================================`);
-        console.log(`OTP sent to WhatsApp ${phoneNumber}`);
-        console.log(`OTP Code (for testing): ${otpCode}`);
+        console.log(`OTP generated for ${phoneNumber}: ${otpCode}`);
+        console.log(`OTP sent via WhatsApp service`);
         console.log(`=================================`);
+
+        // Show success message (don't reveal OTP code for security)
+        Alert.alert(
+          'OTP Terkirim! 📱',
+          `Kode OTP telah dikirim ke WhatsApp ${phoneNumber}.\n\nSilakan periksa pesan WhatsApp Anda dan masukkan kode OTP tersebut.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Auto-focus first input after user acknowledges
+                setTimeout(() => {
+                  otpInputs.current[0]?.focus();
+                }, 500);
+              }
+            }
+          ]
+        );
       } catch (error) {
         console.error('Failed to send initial OTP:', error);
         // Show alert if initial OTP sending fails
@@ -217,20 +233,20 @@ export default function OTPVerificationScreen() {
     try {
       // Generate and send OTP
       const otpCode = await authService.generateOTP(phoneNumber);
-      
+
       // OTP is automatically sent via WhatsApp service
       console.log(`=================================`);
       console.log(`Resent OTP to WhatsApp ${phoneNumber}`);
-      console.log(`OTP Code (for testing): ${otpCode}`);
+      console.log(`Generated OTP: ${otpCode}`);
       console.log(`=================================`);
-      
-      // Show notification that OTP was sent
+
+      // Show success message
       Alert.alert(
-        'OTP Terkirim',
-        `Kode OTP telah dikirim ke WhatsApp ${phoneNumber}. Silakan periksa pesan Anda.`,
+        'OTP Terkirim Ulang! 📱',
+        `Kode OTP baru telah dikirim ke WhatsApp ${phoneNumber}.\n\nSilakan periksa pesan WhatsApp Anda.`,
         [{ text: 'OK' }]
       );
-      
+
       return otpCode;
     } catch (error) {
       console.error('Failed to send WhatsApp OTP:', error);
