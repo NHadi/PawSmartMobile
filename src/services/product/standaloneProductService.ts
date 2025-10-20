@@ -29,9 +29,14 @@ export interface Product {
   isRecommended?: boolean;
   barcode?: string;
   default_code?: string;
+  sku?: string;
   weight?: number;
   volume?: number;
   product_tmpl_id?: [number, string];
+  brand_id?: number;
+  is_active?: boolean;
+  sale_ok?: boolean;
+  purchase_ok?: boolean;
 }
 
 export interface ProductCategory {
@@ -101,7 +106,8 @@ class StandaloneProductService {
         throw new Error(data.message || 'Failed to fetch products');
       }
 
-      return data.success ? data.data : [];
+      const products = data.success ? data.data : [];
+      return this.transformProducts(products);
     } catch (error: any) {
       console.warn('Failed to fetch products from standalone API, returning empty array:', error.message);
       return [];
@@ -127,7 +133,8 @@ class StandaloneProductService {
         throw new Error(data.message || 'Failed to fetch product');
       }
 
-      return data.success ? data.data : null;
+      const product = data.success ? data.data : null;
+      return product ? this.transformProduct(product) : null;
     } catch (error: any) {
       console.warn('Failed to fetch product from standalone API:', error.message);
       return null;
@@ -205,7 +212,8 @@ class StandaloneProductService {
         throw new Error(data.message || 'Failed to fetch recommended products');
       }
 
-      return data.success ? data.data : [];
+      const products = data.success ? data.data : [];
+      return this.transformProducts(products);
     } catch (error: any) {
       console.warn('Failed to fetch recommended products from standalone API, returning empty array:', error.message);
       return [];
@@ -231,11 +239,89 @@ class StandaloneProductService {
         throw new Error(data.message || 'Failed to search products');
       }
 
-      return data.success ? data.data : [];
+      const products = data.success ? data.data : [];
+      return this.transformProducts(products);
     } catch (error: any) {
       console.warn('Failed to search products from standalone API, returning empty array:', error.message);
       return [];
     }
+  }
+
+  /**
+   * Transform API product data to match app Product interface
+   */
+  private transformProduct(apiProduct: any): Product {
+    // Extract brand from product name
+    const extractBrand = (name: string): string | undefined => {
+      const knownBrands = [
+        'Royal Canin', 'Whiskas', 'Pedigree', 'Pro Plan',
+        'Bolt', 'Me-O', 'Meo', 'Friskies', 'Purina',
+        'Fancy Feast', 'Sheba', 'Kit Cat', 'Felibite',
+        'Josera', 'Brit', 'Orijen', 'Acana', 'Taste of the Wild'
+      ];
+
+      const lowerName = name.toLowerCase();
+      for (const brand of knownBrands) {
+        if (lowerName.includes(brand.toLowerCase())) {
+          return brand;
+        }
+      }
+      return undefined;
+    };
+
+    const productName = apiProduct.name || apiProduct.display_name || '';
+
+    // Parse prices from string to number
+    const listPrice = parseFloat(apiProduct.list_price || apiProduct.price || '0');
+    const standardPrice = parseFloat(apiProduct.standard_price || apiProduct.originalPrice || '0');
+    const discountPercentage = parseFloat(apiProduct.discount_percentage || '0');
+
+    return {
+      id: apiProduct.id,
+      name: productName,
+      display_name: apiProduct.display_name || '',
+      description: apiProduct.description || apiProduct.description_sale || '',
+      description_sale: apiProduct.description_sale || '',
+      price: listPrice,
+      list_price: listPrice,
+      standard_price: standardPrice,
+      originalPrice: standardPrice,
+      discount: discountPercentage,
+      currency: apiProduct.currency || 'IDR',
+      qty_available: apiProduct.qty_available || 0,
+      virtual_available: apiProduct.virtual_available || 0,
+      category: apiProduct.category || 'Uncategorized',
+      categ_id: apiProduct.category_id ? [apiProduct.category_id, apiProduct.category] : null,
+      brand_id: apiProduct.brand_id,
+      brand: extractBrand(productName),
+      sku: apiProduct.sku,
+      barcode: apiProduct.barcode || '',
+      default_code: apiProduct.default_code || '',
+      uom_name: apiProduct.uom_name || 'Unit',
+      weight: apiProduct.weight ? parseFloat(apiProduct.weight) : undefined,
+      volume: apiProduct.volume ? parseFloat(apiProduct.volume) : undefined,
+      image_1920: apiProduct.image_1920 || '',
+      image_128: apiProduct.image_128 || '',
+      image: apiProduct.image_128 ? { uri: apiProduct.image_128 } : require('../../../assets/product-placeholder.jpg'),
+      rating: apiProduct.rating ? parseFloat(apiProduct.rating) : 4.5,
+      sold: apiProduct.sold || Math.floor(Math.random() * 1000),
+      isRecommended: apiProduct.is_recommended || false,
+      is_active: apiProduct.is_active,
+      sale_ok: apiProduct.sale_ok,
+      purchase_ok: apiProduct.purchase_ok,
+      product_tmpl_id: apiProduct.product_tmpl_id,
+    };
+  }
+
+  /**
+   * Transform array of API products to match app Product interface
+   */
+  private transformProducts(apiProducts: any[]): Product[] {
+    if (!Array.isArray(apiProducts)) {
+      return [];
+    }
+
+    return apiProducts.map(product => this.transformProduct(product));
   }
 }
 
