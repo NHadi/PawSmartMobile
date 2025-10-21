@@ -135,7 +135,7 @@ export default function ProfileScreen() {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.userName}>{user?.name || user?.username || 'Alan Syahlan'}</Text>
+                <Text style={styles.userName}>{user?.firstName || user?.name || user?.username || 'Alan Syahlan'}</Text>
               </View>
               <TouchableOpacity onPress={handleEditProfile} style={styles.editButton}>
                 <MaterialIcons name="edit" size={20} color="#FFFFFF" />

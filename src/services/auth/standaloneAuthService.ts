@@ -33,12 +33,16 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   avatar?: string;
   role: 'customer';
-  is_active: boolean;
-  created_at: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  lastLogin: string;
+  createdAt?: string;
+  updatedAt?: string;
+  name?: string; // Keep for backward compatibility
 }
 
 export interface SocialLoginRequest {
@@ -270,20 +274,29 @@ class StandaloneAuthService {
   async getCurrentUser(): Promise<User | null> {
     try {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      console.log('getCurrentUser - Token exists:', !!token); // Debug log
       if (!token) return null;
 
-      const response = await fetch(`${this.baseURL}/auth/me`, {
+      const url = `${this.baseURL}/auth/me`;
+      console.log('getCurrentUser - Calling URL:', url); // Debug log
+      console.log('getCurrentUser - Token:', token.substring(0, 20) + '...'); // Debug log
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('getCurrentUser - Response status:', response.status); // Debug log
+
       if (!response.ok) {
+        console.log('getCurrentUser - Response not OK'); // Debug log
         return null;
       }
 
       const data = await response.json();
+      console.log('Auth/me response:', data); // Debug log
       return data.success ? data.data : null;
     } catch (error) {
       return null;

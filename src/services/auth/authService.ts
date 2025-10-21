@@ -27,13 +27,18 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   partner_id?: number; // Odoo partner ID
   company_id?: number;
   image?: string;
   phone?: string;
   provider?: string; // Social login provider
   avatar?: string; // Avatar URL from social provider
+  role?: string;
+  status?: string;
+  lastLogin?: string;
 }
 
 class AuthService {
