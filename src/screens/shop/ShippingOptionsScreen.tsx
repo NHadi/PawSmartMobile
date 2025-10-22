@@ -30,10 +30,17 @@ interface ShippingService {
   apiService?: KiriminAjaShippingService; // Store original API response
 }
 
-interface ShippingProvider {
-  id: string;
+interface CourierOption {
+  code: string;
   name: string;
+  type: 'Express' | 'Instant';
   services: ShippingService[];
+  available: boolean;
+}
+
+interface CourierGroup {
+  type: 'Express' | 'Instant';
+  couriers: CourierOption[];
 }
 
 // Warehouse/Origin Address Configuration
@@ -64,26 +71,27 @@ export default function ShippingOptionsScreen() {
   const currentShipping = route.params?.selectedShipping;
   const deliveryAddress = route.params?.deliveryAddress; // Get address from checkout
 
-  const [shippingProviders, setShippingProviders] = useState<ShippingProvider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<ShippingProvider | null>(null);
+  const [courierGroups, setCourierGroups] = useState<CourierGroup[]>([]);
+  const [selectedCourier, setSelectedCourier] = useState<CourierOption | null>(null);
   const [selectedService, setSelectedService] = useState<ShippingService | null>(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch shipping rates from API
+  // Fetch available couriers and shipping rates
   useEffect(() => {
-    fetchShippingRates();
-  }, []);
+    if (deliveryAddress) {
+      fetchCourierOptions();
+    }
+  }, [deliveryAddress]);
 
-  const fetchShippingRates = async () => {
+  const fetchCourierOptions = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Use passed delivery address from checkout, or fallback to default
+      // Get delivery address
       let customerAddress = deliveryAddress;
-
       if (!customerAddress) {
         console.log('No address passed, trying to get default address...');
         customerAddress = await addressServiceAPI.getDefaultAddress();
@@ -95,13 +103,9 @@ export default function ShippingOptionsScreen() {
         return;
       }
 
-      console.log('=== CUSTOMER ADDRESS DEBUG ===');
-      console.log('Full address object:', JSON.stringify(customerAddress, null, 2));
-      console.log('District:', customerAddress.district);
-      console.log('City:', customerAddress.city);
-      console.log('District ID:', customerAddress.district_id);
-      console.log('Latitude:', customerAddress.latitude);
-      console.log('Longitude:', customerAddress.longitude);
+      // Fetch available couriers
+      const courierResponse = await kiriminAjaService.getAvailableCouriers();
+      console.log('Available couriers:', courierResponse.datas);
 
       // TODO: Calculate actual weight from cart items
       const totalWeight = 1000; // Default 1kg for demo
@@ -116,8 +120,6 @@ export default function ShippingOptionsScreen() {
         setLoading(false);
         return;
       }
-
-      console.log('Address data available:', { hasDistrictId, hasCoordinates });
 
       // If we don't have district_id but have district/city names, try to look it up
       if (!hasDistrictId && customerAddress.district && customerAddress.city) {
@@ -174,8 +176,6 @@ export default function ShippingOptionsScreen() {
 
             // Update hasDistrictId flag
             hasDistrictId = !!customerAddress.district_id;
-          } else {
-            console.log('⚠️ No KiriminAja location match found via API, trying fallback...');
           }
         } catch (error) {
           console.log('⚠️ KiriminAja lazy location search failed:', error);
@@ -190,9 +190,6 @@ export default function ShippingOptionsScreen() {
             console.log('✅ Using fallback district_id:', fallbackId, 'for', fallbackKey);
             customerAddress.district_id = fallbackId;
             hasDistrictId = true;
-          } else {
-            console.log('⚠️ No fallback district_id found for:', fallbackKey);
-            console.log('💡 Available fallback keys:', Object.keys(FALLBACK_DISTRICT_IDS).join(', '));
           }
         }
       }
@@ -217,6 +214,8 @@ export default function ShippingOptionsScreen() {
       // Fetch Instant shipping ONLY if we have coordinates
       if (hasCoordinates) {
         console.log('Fetching instant rates with coordinates');
+        console.log('Origin coordinates:', WAREHOUSE_ADDRESS.latitude, WAREHOUSE_ADDRESS.longitude);
+        console.log('Destination coordinates:', customerAddress.latitude, customerAddress.longitude);
         const instantRequest = {
           origin: {
             lat: WAREHOUSE_ADDRESS.latitude!,
@@ -232,74 +231,115 @@ export default function ShippingOptionsScreen() {
         promises.push(kiriminAjaService.getInstantRates(instantRequest));
       } else {
         console.log('Skipping instant rates - no coordinates');
+        console.log('Customer address has coordinates:', !!(customerAddress.latitude && customerAddress.longitude));
+        if (customerAddress.latitude) console.log('Customer lat:', customerAddress.latitude);
+        if (customerAddress.longitude) console.log('Customer long:', customerAddress.longitude);
         promises.push(Promise.resolve({ status: false, results: [] }));
       }
 
       // Fetch available shipping options
       const [expressResponse, instantResponse] = await Promise.allSettled(promises);
 
-      const providers: ShippingProvider[] = [];
+      // Group couriers by type
+      const groups: CourierGroup[] = [];
+      const expressCouriers: CourierOption[] = [];
+      const instantCouriers: CourierOption[] = [];
 
-      // Process Express response
+      // Create courier options from API data
+      if (courierResponse.status && courierResponse.datas) {
+        courierResponse.datas.forEach(courier => {
+          const courierOption: CourierOption = {
+            code: courier.code,
+            name: courier.name,
+            type: courier.type,
+            services: [],
+            available: false,
+          };
+
+          if (courier.type === 'Express') {
+            expressCouriers.push(courierOption);
+          } else if (courier.type === 'Instant') {
+            instantCouriers.push(courierOption);
+          }
+        });
+      }
+
+      // Process Express response and map to couriers
+      let expressServices: KiriminAjaShippingService[] = [];
       if (expressResponse.status === 'fulfilled' && expressResponse.value.status) {
         const realExpressServices = kiriminAjaService.filterRealServices(expressResponse.value.results);
-        const expressServices = kiriminAjaService.filterByGroup(realExpressServices, 'regular');
-
-        console.log('=== EXPRESS SERVICES ===');
-        console.log('Total from API:', expressResponse.value.results.length);
-        console.log('After filtering:', expressServices.length);
-
-        if (expressServices.length > 0) {
-          providers.push({
-            id: 'express',
-            name: 'Express',
-            services: expressServices.map(service => ({
-              id: service.service_type,
-              name: service.service_name,
-              price: parseInt(service.cost),
-              estimatedDays: `${service.etd} hari`,
-              apiService: service,
-            })),
-          });
-        }
+        expressServices = kiriminAjaService.filterByGroup(realExpressServices, 'regular');
+        console.log('Express services found:', expressServices.length);
       }
 
-      // Process Instant response
+      // Map services to couriers
+      expressServices.forEach(service => {
+        const courier = expressCouriers.find(c => c.code === service.service);
+        if (courier) {
+          courier.services.push({
+            id: service.service_type,
+            name: service.service_name,
+            price: parseInt(service.cost),
+            estimatedDays: `${service.etd} hari`,
+            apiService: service,
+          });
+          courier.available = true;
+        }
+      });
+
+      // Process Instant response and map to couriers
+      let instantServices: KiriminAjaShippingService[] = [];
       if (instantResponse.status === 'fulfilled' && instantResponse.value.status) {
-        const realInstantServices = kiriminAjaService.filterRealServices(instantResponse.value.results);
-
-        console.log('=== INSTANT SERVICES ===');
-        console.log('Total from API:', instantResponse.value.results.length);
-        console.log('After filtering:', realInstantServices.length);
-
-        if (realInstantServices.length > 0) {
-          providers.push({
-            id: 'instant',
-            name: 'Instant',
-            services: realInstantServices.map(service => ({
-              id: service.service_type,
-              name: service.service_name,
-              price: parseInt(service.cost),
-              estimatedDays: `${service.etd} hari`,
-              apiService: service,
-            })),
-          });
-        }
+        instantServices = kiriminAjaService.filterRealServices(instantResponse.value.results);
+        console.log('Instant services found:', instantServices.length);
       }
 
-      console.log('=== FINAL PROVIDERS ===');
-      console.log('Total providers:', providers.length);
-      providers.forEach(p => console.log(`${p.name}: ${p.services.length} services`));
+      // Map services to couriers
+      instantServices.forEach(service => {
+        const courier = instantCouriers.find(c => c.code === service.service);
+        if (courier) {
+          courier.services.push({
+            id: service.service_type,
+            name: service.service_name,
+            price: parseInt(service.cost),
+            estimatedDays: `${service.etd} hari`,
+            apiService: service,
+          });
+          courier.available = true;
+        }
+      });
 
-      setShippingProviders(providers);
+      // Create groups
+      if (expressCouriers.length > 0) {
+        groups.push({
+          type: 'Express',
+          couriers: expressCouriers,
+        });
+      }
+
+      if (instantCouriers.length > 0) {
+        groups.push({
+          type: 'Instant',
+          couriers: instantCouriers,
+        });
+      }
+
+      console.log('=== FINAL COURIER GROUPS ===');
+      groups.forEach(group => {
+        console.log(`${group.type} group: ${group.couriers.length} couriers`);
+        group.couriers.forEach(courier => {
+          console.log(`  - ${courier.name}: ${courier.services.length} services, available: ${courier.available}`);
+        });
+      });
+
+      setCourierGroups(groups);
 
       // Set default selection
-      if (providers.length > 0) {
-        const defaultProvider = providers[0];
-        setSelectedProvider(defaultProvider);
-
-        if (defaultProvider.services.length > 0) {
-          setSelectedService(defaultProvider.services[0]);
+      if (groups.length > 0 && groups[0].couriers.length > 0) {
+        const firstAvailableCourier = groups[0].couriers.find(c => c.available) || groups[0].couriers[0];
+        setSelectedCourier(firstAvailableCourier);
+        if (firstAvailableCourier.services.length > 0) {
+          setSelectedService(firstAvailableCourier.services[0]);
         }
       }
     } catch (err) {
@@ -310,8 +350,14 @@ export default function ShippingOptionsScreen() {
     }
   };
 
-  const handleSelectProvider = (provider: ShippingProvider) => {
-    setSelectedProvider(provider);
+  const handleSelectCourier = (courier: CourierOption) => {
+    if (!courier.available) {
+      // Show message that this courier is not available for the route
+      setError(`${courier.name} tidak tersedia untuk rute ini. Silakan pilih kurir lain.`);
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    setSelectedCourier(courier);
     setShowServiceModal(true);
   };
 
@@ -356,46 +402,69 @@ export default function ShippingOptionsScreen() {
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={48} color={Colors.error.main} />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchShippingRates}>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchCourierOptions}>
             <Text style={styles.retryButtonText}>Coba Lagi</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Provider Selection */}
-          <View style={styles.providerSection}>
-            {shippingProviders.map((provider) => (
-              <TouchableOpacity
-                key={provider.id}
-                style={[
-                  styles.providerCard,
-                  selectedProvider?.id === provider.id && styles.providerCardSelected,
-                ]}
-                onPress={() => handleSelectProvider(provider)}
-              >
-                <View style={styles.providerContent}>
-                  <Text style={styles.providerName}>{provider.name}</Text>
-                  <Text style={styles.providerPrice}>
-                    Mulai dari Rp{provider.services[0].price.toLocaleString('id-ID')}
-                  </Text>
-                  {selectedProvider?.id === provider.id && selectedService && (
-                    <TouchableOpacity
-                      style={styles.providerExpand}
-                      onPress={() => setShowServiceModal(true)}
-                    >
-                      <Text style={styles.expandText}>{selectedService.name}</Text>
-                      <MaterialIcons name="expand-more" size={20} color={Colors.text.secondary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <View style={styles.radioButton}>
-                  {selectedProvider?.id === provider.id ? (
-                    <View style={styles.radioButtonSelected} />
-                  ) : null}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {courierGroups.map((group) => (
+            <View key={group.type} style={styles.groupSection}>
+              <Text style={styles.groupTitle}>{group.type}</Text>
+              {group.couriers.map((courier) => (
+                <TouchableOpacity
+                  key={courier.code}
+                  style={[
+                    styles.courierCard,
+                    selectedCourier?.code === courier.code && styles.courierCardSelected,
+                    !courier.available && styles.courierCardDisabled,
+                  ]}
+                  onPress={() => handleSelectCourier(courier)}
+                  disabled={!courier.available}
+                >
+                  <View style={styles.courierContent}>
+                    <Text style={[
+                      styles.courierName,
+                      !courier.available && styles.courierNameDisabled
+                    ]}>
+                      {courier.name}
+                    </Text>
+                    <Text style={[
+                      styles.courierPrice,
+                      !courier.available && styles.courierPriceDisabled
+                    ]}>
+                      {courier.available && courier.services.length > 0
+                        ? `Mulai dari Rp${Math.min(...courier.services.map(s => s.price)).toLocaleString('id-ID')}`
+                        : courier.available
+                        ? 'Tersedia'
+                        : 'Tidak tersedia untuk rute ini'
+                      }
+                    </Text>
+                    {selectedCourier?.code === courier.code && selectedService && (
+                      <TouchableOpacity
+                        style={styles.courierExpand}
+                        onPress={() => setShowServiceModal(true)}
+                      >
+                        <Text style={styles.expandText}>{selectedService.name}</Text>
+                        <MaterialIcons name="expand-more" size={20} color={Colors.text.secondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <View style={[
+                    styles.radioButton,
+                    !courier.available && styles.radioButtonDisabled
+                  ]}>
+                    {selectedCourier?.code === courier.code ? (
+                      <View style={[
+                        styles.radioButtonSelected,
+                        !courier.available && styles.radioButtonSelectedDisabled
+                      ]} />
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
         </ScrollView>
       )}
 
@@ -413,13 +482,13 @@ export default function ShippingOptionsScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedProvider?.name || 'Pilih Layanan'}</Text>
+              <Text style={styles.modalTitle}>{selectedCourier?.name || 'Pilih Layanan'}</Text>
               <TouchableOpacity onPress={() => setShowServiceModal(false)}>
                 <MaterialIcons name="close" size={24} color={Colors.text.primary} />
               </TouchableOpacity>
             </View>
 
-            {selectedProvider?.services.map((service) => (
+            {selectedCourier?.services.map((service) => (
               <TouchableOpacity
                 key={service.id}
                 style={styles.serviceOption}
@@ -454,8 +523,20 @@ export default function ShippingOptionsScreen() {
 
       {/* Bottom Confirm Button */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmButtonText}>Konfirmasi</Text>
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            (!selectedService || !selectedCourier?.available) && styles.confirmButtonDisabled
+          ]}
+          onPress={handleConfirm}
+          disabled={!selectedService || !selectedCourier?.available}
+        >
+          <Text style={[
+            styles.confirmButtonText,
+            (!selectedService || !selectedCourier?.available) && styles.confirmButtonTextDisabled
+          ]}>
+            Konfirmasi
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -482,38 +563,59 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.primary,
   },
-  providerSection: {
-    padding: Spacing.base,
+  groupSection: {
+    marginBottom: Spacing.lg,
   },
-  providerCard: {
+  groupTitle: {
+    fontSize: Typography.fontSize.md,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.primary.main,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.light,
+  },
+  courierCard: {
     backgroundColor: Colors.background.primary,
     borderRadius: BorderRadius.md,
     padding: Spacing.base,
-    marginBottom: Spacing.md,
+    marginHorizontal: Spacing.base,
+    marginBottom: Spacing.sm,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: Colors.border.light,
   },
-  providerCardSelected: {
+  courierCardSelected: {
     borderColor: Colors.primary.main,
   },
-  providerContent: {
+  courierCardDisabled: {
+    borderColor: Colors.border.light,
+    opacity: 0.6,
+  },
+  courierContent: {
     flex: 1,
   },
-  providerName: {
+  courierName: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.primary,
     marginBottom: Spacing.xs,
   },
-  providerPrice: {
+  courierNameDisabled: {
+    color: Colors.text.disabled,
+  },
+  courierPrice: {
     fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
     marginBottom: Spacing.sm,
   },
-  providerExpand: {
+  courierPriceDisabled: {
+    color: Colors.text.disabled,
+  },
+  courierExpand: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.background.secondary,
@@ -537,13 +639,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: Spacing.md,
   },
+  radioButtonDisabled: {
+    borderColor: Colors.border.light,
+  },
   radioButtonSelected: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: Colors.primary.main,
   },
-  
+  radioButtonSelectedDisabled: {
+    backgroundColor: Colors.border.light,
+  },
+
   // Modal Styles
   modalOverlay: {
     flex: 1,
@@ -623,7 +731,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
   },
-  
+
   // Bottom Container
   bottomContainer: {
     backgroundColor: Colors.background.primary,
@@ -638,10 +746,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     alignItems: 'center',
   },
+  confirmButtonDisabled: {
+    backgroundColor: Colors.border.light,
+  },
   confirmButtonText: {
     color: Colors.text.white,
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
+  },
+  confirmButtonTextDisabled: {
+    color: Colors.text.disabled,
   },
   // Loading and error styles
   loadingContainer: {
