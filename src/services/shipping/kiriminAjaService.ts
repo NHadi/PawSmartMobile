@@ -483,6 +483,25 @@ class KiriminAjaService {
       timezone,
     };
   }
+
+  /**
+   * Get all available couriers
+   * Endpoint: POST /api/mitra/couriers
+   */
+  async getAvailableCouriers(): Promise<{status: boolean, datas: Array<{code: string, name: string, type: string}>}> {
+    try {
+      console.log('Fetching available couriers from KiriminAja');
+
+      const response = await kiriminAjaClient.post('/api/mitra/couriers');
+
+      console.log('Available couriers response:', response.data);
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch available couriers:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.text || 'Failed to fetch available couriers');
+    }
+  }
 }
 
 export default new KiriminAjaService();
