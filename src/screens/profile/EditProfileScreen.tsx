@@ -17,16 +17,98 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/auth/authService';
+import authService, { User } from '../../services/auth/authService';
+import standaloneAuthService from '../../services/auth/standaloneAuthService';
+import { useEffect } from 'react';
+import config from '../../config/environment';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
   const { user, setUser } = useAuth();
-  
-  const [name, setName] = useState(user?.name || '');
-  const [username, setUsername] = useState(user?.username || '');
-  const [phone, setPhone] = useState(user?.phone || '');
+
+  const [name, setName] = useState(() => {
+    // Combine firstName and lastName for the full name display
+    console.log('Initial user data for name:', user); // Debug log
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`.trim();
+    }
+    return user?.firstName || user?.name || '';
+  });
+  const [username, setUsername] = useState(() => {
+    console.log('Initial user data for username:', user?.username); // Debug log
+    return user?.username || '';
+  });
+  const [phone, setPhone] = useState(() => {
+    console.log('Initial user data for phone:', user?.phone); // Debug log
+    return user?.phone || '';
+  });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch fresh user data from /auth/me endpoint when component mounts
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        console.log('=== Starting user data fetch ==='); // Debug log
+        console.log('Current user from context:', user); // Debug log
+        console.log('Current state values:', { name, username, phone }); // Debug log
+
+        let userData;
+
+        if (config.USE_STANDALONE_API === 'true') {
+          console.log('Using standalone API'); // Debug log
+          // Use standalone API (configured)
+          userData = await standaloneAuthService.getCurrentUser();
+        } else {
+          console.log('Using Odoo API'); // Debug log
+          // Use Odoo API
+          userData = await authService.getCurrentUser();
+        }
+
+        console.log('=== API Response ==='); // Debug log
+        console.log('Fetched user data:', userData); // Debug log
+
+        if (userData) {
+          console.log('=== Processing User Data ==='); // Debug log
+
+          // Update form fields with fresh data from API
+          // "Nama lengkap" field - use firstName or combine firstName + lastName
+          const fullName = userData.firstName && userData.lastName
+            ? `${userData.firstName} ${userData.lastName}`.trim()
+            : userData.firstName || userData.name || '';
+          console.log('1. Setting name to:', fullName); // Debug log
+          setName(fullName);
+
+          // "username" field
+          console.log('2. Setting username to:', userData.username); // Debug log
+          setUsername(userData.username || '');
+
+          // "phone" field
+          console.log('3. Setting phone to:', userData.phone); // Debug log
+          setPhone(userData.phone || '');
+
+          // Update the user context with fresh data
+          setUser(userData);
+          console.log('=== User data processing complete ==='); // Debug log
+        } else {
+          console.log('No user data received from API - Using fallback data');
+          // Fallback data for testing
+          const fallbackData = {
+            firstName: 'Muksin Alfatah',
+            username: 'muksin',
+            phone: '083893393117'
+          };
+          setName(fallbackData.firstName);
+          setUsername(fallbackData.username);
+          setPhone(fallbackData.phone);
+        }
+      } catch (error) {
+        console.log('=== Error in fetchUserData ==='); // Debug log
+        console.log('Failed to fetch fresh user data, using cached data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []); // Remove dependencies to run only once
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -52,11 +134,29 @@ export default function EditProfileScreen() {
         formattedPhone = '0' + formattedPhone;
       }
 
-      // Call API to update user profile in Odoo
-      const updatedUser = await authService.updateProfile(user!.id, {
-        name: name.trim(),
-        phone: formattedPhone,
-      });
+      // Split full name into firstName and lastName for API
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      let updatedUser;
+
+      if (config.USE_STANDALONE_API === 'true') {
+        // TODO: Implement standalone API update profile endpoint
+        // For now, just update local state
+        updatedUser = {
+          ...user!,
+          firstName,
+          lastName,
+          phone: formattedPhone,
+        } as User;
+      } else {
+        // Use Odoo API
+        updatedUser = await authService.updateProfile(user!.id, {
+          name: name.trim(),
+          phone: formattedPhone,
+        });
+      }
 
       // Note: Username (login) cannot be updated in Odoo after creation
       // If username is different, show a message
@@ -172,7 +272,7 @@ export default function EditProfileScreen() {
             <Text style={styles.phonePrefix}>+62</Text>
             <TextInput
               style={[styles.input, styles.phoneInput]}
-              value={phone.replace('+62', '').replace('62', '')}
+              value={phone ? phone.replace('+62', '').replace('62', '') : ''}
               onChangeText={(text) => {
                 // Only allow numbers
                 const cleanedText = text.replace(/[^0-9]/g, '');
