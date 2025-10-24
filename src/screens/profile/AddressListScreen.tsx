@@ -17,7 +17,7 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ProfileStackParamList } from '../../navigation/types';
-import odooAddressService from '../../services/address/odooAddressService';
+import standaloneAddressService from '../../services/address/standaloneAddressService';
 import defaultAddressService from '../../services/address/defaultAddressService';
 
 type NavigationProp = StackNavigationProp<ProfileStackParamList, 'MyAddress'>;
@@ -48,31 +48,34 @@ export default function ProfileAddressListScreen() {
 
   const loadAddresses = async () => {
     try {
-      // Get addresses from Odoo
-      const odooAddresses = await odooAddressService.getUserAddresses();
-      
+      console.log('=== PROFILE ADDRESS LIST - Loading addresses ===');
+      // Get addresses from standalone API
+      const addresses = await standaloneAddressService.getAddresses();
+      console.log('Got addresses from API:', addresses.length);
+
       // Get default address ID from local storage
       const defaultId = await defaultAddressService.getDefaultAddressId();
       setDefaultAddressId(defaultId);
-      
-      // Map Odoo addresses to our format
-      const mappedAddresses: Address[] = odooAddresses.map(addr => ({
+
+      // Map standalone addresses to our format
+      const mappedAddresses: Address[] = addresses.map(addr => ({
         id: String(addr.id),
-        name: addr.name || '',
-        phone: addr.phone || addr.mobile || '',
-        fullAddress: addr.street || '',
-        detail: addr.street2 || '',
+        name: addr.recipient_name || '',
+        phone: addr.phone || '',
+        fullAddress: addr.address_line1,
+        detail: addr.address_line2 || '',
         city: addr.city || '',
-        postalCode: addr.zip || '',
-        latitude: addr.partner_latitude,
-        longitude: addr.partner_longitude,
+        postalCode: addr.postal_code,
+        latitude: addr.latitude,
+        longitude: addr.longitude,
         isDefault: String(addr.id) === defaultId,
-        // Parse province/city/district from Odoo data if available
-        province: addr.state_id ? addr.state_id[1] : '',
+        province: addr.state || '',
       }));
       
       setAddresses(mappedAddresses);
+      console.log('✅ Profile AddressList - Successfully loaded', addresses.length, 'addresses');
     } catch (error) {
+      console.error('❌ Profile AddressList - Failed to load addresses:', error);
       // Show user-friendly error
       if (!isRefreshing) {
         Alert.alert('Error', 'Gagal memuat alamat. Silakan coba lagi.');
@@ -133,7 +136,7 @@ export default function ProfileAddressListScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await odooAddressService.deleteAddress(parseInt(addressId));
+              await standaloneAddressService.deleteAddress(addressId);
               
               // If this was the default address, clear it
               if (addressId === defaultAddressId) {

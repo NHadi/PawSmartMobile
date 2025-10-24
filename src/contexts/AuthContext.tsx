@@ -56,61 +56,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Choose authentication service based on configuration
-      if (config.USE_STANDALONE_API) {
-        // Use Standalone API (JWT)
-        const userData = await standaloneAuthService.getCurrentUser();
+      // Use Standalone API (JWT) only
+      const userData = await standaloneAuthService.getCurrentUser();
 
-        if (userData) {
-          // Verify token is still valid
-          const isValid = await standaloneAuthService.verifyToken();
+      if (userData) {
+        // Verify token is still valid
+        const isValid = await standaloneAuthService.verifyToken();
 
-          if (isValid) {
-            setIsAuthenticated(true);
-            setUser(userData);
-          } else {
-            // Try to refresh token
-            const refreshResponse = await standaloneAuthService.refreshToken();
-
-            if (refreshResponse) {
-              setIsAuthenticated(true);
-              setUser(refreshResponse.user);
-            } else {
-              // Refresh failed, logout
-              await logout();
-            }
-          }
+        if (isValid) {
+          setIsAuthenticated(true);
+          setUser(userData);
         } else {
-          setIsAuthenticated(false);
-          setUser(null);
+          // Try to refresh token
+          const refreshResponse = await standaloneAuthService.refreshToken();
+
+          if (refreshResponse) {
+            setIsAuthenticated(true);
+            setUser(refreshResponse.user);
+          } else {
+            // Refresh failed, logout
+            await logout();
+          }
         }
       } else {
-        // Use Odoo API
-        const userData = await authService.getCurrentUser();
-
-        if (userData) {
-          // Verify the token is still valid
-          const isValid = await authService.verifyToken();
-
-          if (isValid) {
-            setIsAuthenticated(true);
-            setUser(userData);
-          } else {
-            // Token is invalid, try to refresh
-            const refreshResponse = await authService.refreshToken();
-
-            if (refreshResponse) {
-              setIsAuthenticated(true);
-              setUser(refreshResponse.user);
-            } else {
-              // Refresh failed, logout
-              await logout();
-            }
-          }
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
-        }
+        setIsAuthenticated(false);
+        setUser(null);
       }
     } catch (error) {
       setIsAuthenticated(false);
@@ -124,35 +94,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Choose authentication service based on configuration
-      if (config.USE_STANDALONE_API) {
-        // Use Standalone API (JWT)
-        const response = await standaloneAuthService.login({
-          username,
-          password,
-        });
+      // Use Standalone API (JWT) only
+      const response = await standaloneAuthService.login({
+        username,
+        password,
+      });
 
-        setIsAuthenticated(true);
-        setUser(response.user);
-      } else {
-        // Use Odoo API
-        // If we have an API key configured, we don't need password
-        if (config.ODOO.API_KEY) {
-          // API key authentication will be handled by authService
-        }
-
-        // Use configured username if available and no username provided
-        const finalUsername = username || config.ODOO.USERNAME || '';
-
-        const response = await authService.login({
-          username: finalUsername,
-          password: password || config.ODOO.PASSWORD || '',
-          database: config.ODOO.DATABASE,
-        });
-
-        setIsAuthenticated(true);
-        setUser(response.user);
-      }
+      setIsAuthenticated(true);
+      setUser(response.user);
 
     } catch (error: any) {
       // Check for network errors
@@ -178,20 +127,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Choose authentication service based on configuration
-      if (config.USE_STANDALONE_API) {
-        await standaloneAuthService.logout();
-      } else {
-        await authService.logout();
-      }
+      // Use Standalone API only
+      await standaloneAuthService.logout();
 
       // Clear all stored data
       await AsyncStorage.multiRemove([
         AUTH_TOKEN_KEY,
         USER_DATA_KEY,
         '@PawSmart:cartItems',
-        '@PawSmart:odooCredentials',
-        '@PawSmart:adminCredentials',
+        '@PawSmart:refreshToken',
       ]);
 
       // Update state
@@ -210,34 +154,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Choose authentication service based on configuration
-      if (config.USE_STANDALONE_API) {
-        // Use Standalone API (JWT)
-        const response = await standaloneAuthService.register({
-          username: userData.username,
-          email: userData.email,
-          password: userData.password,
-          name: userData.name,
-          phone: userData.phone || '',
-        });
+      // Use Standalone API (JWT) only
+      const response = await standaloneAuthService.register({
+        username: userData.username,
+        email: userData.email,
+        password: userData.password,
+        name: userData.name,
+        phone: userData.phone || '',
+      });
 
-        setIsAuthenticated(true);
-        setUser(response.user);
-      } else {
-        // Use Odoo API
-        const response = await authService.register(userData);
-
-        setIsAuthenticated(true);
-        setUser(response.user);
-
-        // Store token and user data for Odoo
-        if (response?.access_token) {
-          await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.access_token);
-        }
-        if (response?.user) {
-          await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user));
-        }
-      }
+      setIsAuthenticated(true);
+      setUser(response.user);
     } catch (error: any) {
       throw error;
     } finally {
@@ -272,62 +199,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Provider tidak didukung');
       }
 
-      // Choose authentication service based on configuration
-      if (config.USE_STANDALONE_API) {
-        // Use Standalone API (JWT)
-        const response = await standaloneAuthService.socialLogin(provider, {
-          provider,
-          access_token: socialResponse.accessToken,
-          id_token: socialResponse.idToken,
-          email: socialResponse.user.email,
-          name: socialResponse.user.name,
-        });
+      // Use Standalone API (JWT) only
+      const response = await standaloneAuthService.socialLogin(provider, {
+        provider,
+        access_token: socialResponse.accessToken,
+        id_token: socialResponse.idToken,
+        email: socialResponse.user.email,
+        name: socialResponse.user.name,
+      });
 
-        setIsAuthenticated(true);
-        setUser(response.user);
-      } else {
-        // Use Odoo API
-        try {
-          const response = await authService.loginWithSocial({
-            provider: provider,
-            socialId: socialResponse.user.id,
-            accessToken: socialResponse.accessToken,
-            idToken: socialResponse.idToken,
-            email: socialResponse.user.email,
-            name: socialResponse.user.name,
-            avatar: socialResponse.user.picture,
-          });
-
-          setIsAuthenticated(true);
-          setUser(response.user);
-
-          if (response?.access_token) {
-            await AsyncStorage.setItem('@PawSmart:authToken', response.access_token);
-          }
-
-        } catch (error: any) {
-          // Fallback: create local user if Odoo fails
-          const fallbackUser: User = {
-            id: parseInt(socialResponse.user.id) || Date.now(),
-            username: socialResponse.user.email?.split('@')[0] || `${provider}_user_${Date.now()}`,
-            name: socialResponse.user.name || 'User',
-            email: socialResponse.user.email || '',
-            phone: '',
-            provider: provider,
-            avatar: socialResponse.user.picture,
-          } as AuthUser;
-
-          if (socialResponse?.accessToken) {
-            await AsyncStorage.setItem(AUTH_TOKEN_KEY, socialResponse.accessToken);
-          }
-          if (fallbackUser) {
-            await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(fallbackUser));
-          }
-
-          setIsAuthenticated(true);
-          setUser(fallbackUser);
-        }
-      }
+      setIsAuthenticated(true);
+      setUser(response.user);
 
     } catch (error: any) {
       if (error.message === 'LOGIN_CANCELLED') {
@@ -348,18 +230,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (config.USE_STANDALONE_API) {
-        await standaloneAuthService.changePassword({
-          current_password: oldPassword,
-          new_password: newPassword,
-        });
-      } else {
-        // Use Odoo API - need user ID for this
-        if (!user || !('id' in user)) {
-          throw new Error('User not found');
-        }
-        await authService.changePassword(user.id, oldPassword, newPassword);
-      }
+      // Use Standalone API only
+      await standaloneAuthService.changePassword({
+        current_password: oldPassword,
+        new_password: newPassword,
+      });
     } catch (error: any) {
       throw error;
     } finally {
@@ -371,13 +246,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (config.USE_STANDALONE_API) {
-        await standaloneAuthService.forgotPassword(email);
-      } else {
-        // Odoo doesn't have a direct forgot password endpoint in this setup
-        // You might need to implement custom logic or use a different approach
-        throw new Error('Password reset not available for Odoo backend');
-      }
+      // Use Standalone API only
+      await standaloneAuthService.forgotPassword(email);
     } catch (error: any) {
       throw error;
     } finally {
@@ -389,14 +259,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      if (config.USE_STANDALONE_API) {
-        await standaloneAuthService.resetPassword({
-          token,
-          password: newPassword,
-        });
-      } else {
-        throw new Error('Password reset not available for Odoo backend');
-      }
+      // Use Standalone API only
+      await standaloneAuthService.resetPassword({
+        token,
+        password: newPassword,
+      });
     } catch (error: any) {
       throw error;
     } finally {

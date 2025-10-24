@@ -16,9 +16,9 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
-import odooAddressService, { OdooAddress } from '../../services/address/odooAddressService';
+import standaloneAddressService, { Address as StandaloneAddress } from '../../services/address/standaloneAddressService';
 
-// Map Odoo address to our Address interface
+// Map standalone address to our Address interface
 export interface Address {
   id: string;
   label: string;
@@ -57,53 +57,43 @@ export default function AddressListScreen() {
 
   const loadAddresses = async () => {
     try {
-      const odooAddresses = await odooAddressService.getUserAddresses();
+      const addresses = await standaloneAddressService.getAddresses();
 
-      // Convert Odoo addresses to our format
-      const convertedAddresses: Address[] = odooAddresses.map(addr => {
-        // Try to parse extended data from street2 field
-        let extendedData: any = {};
-        try {
-          if (addr.street2 && addr.street2.startsWith('{')) {
-            extendedData = JSON.parse(addr.street2);
-          }
-        } catch (e) {
-          // If parsing fails, treat street2 as plain detail text
-          extendedData = { detail: addr.street2 };
-        }
-
+      // Convert standalone addresses to our format
+      const convertedAddresses: Address[] = addresses.map(addr => {
         return {
           id: addr.id.toString(),
-          label: addr.type || 'Rumah',
-          name: addr.name,
-          phone: addr.phone || addr.mobile || '',
-          fullAddress: addr.street || '',
-          detail: extendedData.detail || addr.street2 || '',
-          postalCode: addr.zip || '',
-          isDefault: addr.is_default_shipping || false,
-          latitude: addr.partner_latitude,
-          longitude: addr.partner_longitude,
-          province: extendedData.province || (addr.state_id ? addr.state_id[1] : ''),
-          city: addr.city || '',
-          district: extendedData.district || '',
-          subDistrict: extendedData.subDistrict || '',
-          // Include KiriminAja IDs for shipping
-          province_id: extendedData.province_id,
-          city_id: extendedData.city_id,
-          district_id: extendedData.district_id,
-          subdistrict_id: extendedData.subdistrict_id,
+          label: addr.label || 'Rumah',
+          name: addr.recipient_name,
+          phone: addr.phone || '',
+          fullAddress: addr.address_line1,
+          detail: addr.address_line2 || '',
+          postalCode: addr.postal_code,
+          isDefault: addr.is_default,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          province: addr.state,
+          city: addr.city,
+          district: addr.district,
+          subDistrict: addr.subdistrict,
+          // Include KiriminAja IDs for shipping (if available in notes)
+          province_id: undefined,
+          city_id: undefined,
+          district_id: undefined,
+          subdistrict_id: undefined,
         };
       });
-      
+
       setAddresses(convertedAddresses);
-      
+
       // Set default selected address
       const defaultAddress = convertedAddresses.find((addr: Address) => addr.isDefault);
       if (defaultAddress) {
         setSelectedAddressId(defaultAddress.id);
       }
     } catch (error) {
-      }
+      console.error('Failed to load addresses:', error);
+    }
   };
 
   const handleSelectAddress = (address: Address) => {
