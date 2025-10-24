@@ -19,6 +19,8 @@ export default function SplashScreen() {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const textFadeAnim = useRef(new Animated.Value(0)).current;
+  const bottomImageFadeAnim = useRef(new Animated.Value(0)).current;
+  const bottomImageSlideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
     // Logo animation
@@ -59,6 +61,22 @@ export default function SplashScreen() {
       delay: 500,
       useNativeDriver: true,
     }).start();
+
+    // Bottom image animation
+    Animated.parallel([
+      Animated.timing(bottomImageFadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bottomImageSlideAnim, {
+        toValue: 0,
+        duration: 1000,
+        delay: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   return (
@@ -110,6 +128,25 @@ export default function SplashScreen() {
             <Text style={styles.tagline}>Your Pet's Best Friend</Text>
           </Animated.View>
         </View>
+
+        {/* Bottom Image */}
+        <Animated.View
+          style={[
+            styles.bottomImageContainer,
+            {
+              opacity: bottomImageFadeAnim,
+              transform: [
+                { translateY: bottomImageSlideAnim },
+              ],
+            },
+          ]}
+        >
+          <Image
+            source={require('../../assets/flashscreen_bottom.png')}
+            style={styles.bottomImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
       </ImageBackground>
     </View>
   );
@@ -172,5 +209,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     opacity: 0.9,
     letterSpacing: 0.5,
+  },
+
+  // Bottom Image
+  bottomImageContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  bottomImage: {
+    width: width,
+    height: 150,
   },
 });
