@@ -20,6 +20,7 @@ import { HomeStackParamList } from '../../navigation/types';
 import { useCart, CartItem as ContextCartItem } from '../../contexts/CartContext';
 import { useProducts } from '../../hooks/useProducts';
 import authService from '../../services/auth/authService';
+import { useAuth } from '../../contexts/AuthContext';
 
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'Cart'>;
 
@@ -55,6 +56,7 @@ const FREE_SHIPPING_THRESHOLD = 500000; // Rp 500.000 for free shipping
 
 export default function CartScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { isAuthenticated: authContextIsAuthenticated, user: authContextUser } = useAuth();
   const { items: contextCartItems, updateQuantity: updateCartQuantity, removeItem: removeCartItem, totalItems, totalPrice, addItem, canAddMore } = useCart();
   
   // Convert context cart items to local format with selection state
@@ -245,13 +247,62 @@ export default function CartScreen() {
   };
 
   const handleCheckout = async () => {
-    // Check if user is authenticated before navigating to checkout
-    const isAuthenticated = await authService.isAuthenticated();
-    
-    if (!isAuthenticated) {
+    try {
+      // Use AuthContext instead of direct authService call
+      if (!authContextIsAuthenticated) {
+        Alert.alert(
+          'Login Required',
+          'Silakan login terlebih dahulu untuk melanjutkan checkout',
+          [
+            {
+              text: 'Login',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' as any }],
+                });
+              }
+            },
+            {
+              text: 'Batal',
+              style: 'cancel'
+            }
+          ]
+        );
+        return;
+      }
+
+      // Additional check: ensure user data exists in AuthContext
+      if (!authContextUser) {
+        Alert.alert(
+          'Session Expired',
+          'Sesi login Anda telah berakhir. Silakan login kembali.',
+          [
+            {
+              text: 'Login',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' as any }],
+                });
+              }
+            },
+            {
+              text: 'Batal',
+              style: 'cancel'
+            }
+          ]
+        );
+        return;
+      }
+
+      // Navigate to checkout if authenticated
+      navigation.navigate('Checkout');
+    } catch (error) {
+      console.error('CartScreen: Authentication check failed:', error);
       Alert.alert(
-        'Login Required',
-        'Silakan login terlebih dahulu untuk melanjutkan checkout',
+        'Authentication Error',
+        'Terjadi kesalahan saat memverifikasi sesi Anda. Silakan login kembali.',
         [
           {
             text: 'Login',
@@ -268,11 +319,7 @@ export default function CartScreen() {
           }
         ]
       );
-      return;
     }
-    
-    // Navigate to checkout if authenticated
-    navigation.navigate('Checkout');
   };
 
   const addToCart = (product: RecommendedProduct) => {

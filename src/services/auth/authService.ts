@@ -229,8 +229,22 @@ class AuthService {
    * Check if user is authenticated
    */
   async isAuthenticated(): Promise<boolean> {
-    const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-    return !!token;
+    try {
+      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      if (!token) return false;
+
+      // Also check if we have valid user data
+      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+      if (!userData) return false;
+
+      const user = JSON.parse(userData);
+      if (!user || !user.id) return false;
+
+      return true;
+    } catch (error) {
+      console.error('Authentication check failed:', error);
+      return false;
+    }
   }
 
   /**

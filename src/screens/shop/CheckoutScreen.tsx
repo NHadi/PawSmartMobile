@@ -20,6 +20,7 @@ import { useCart } from '../../contexts/CartContext';
 import orderService, { CreateOrderData } from '../../services/order/orderService';
 import paymentSimulator from '../../services/payment/paymentSimulator';
 import authService from '../../services/auth/authService';
+import { useAuth } from '../../contexts/AuthContext';
 import PaymentMethodModal from '../../components/modals/PaymentMethodModal';
 import PaymentDetails from '../../components/payment/PaymentDetails';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
@@ -94,7 +95,8 @@ export default function CheckoutScreen() {
   const route = useRoute<CheckoutRouteProp>();
   const { items: contextCartItems, totalPrice, totalItems, clearCart } = useCart();
   const { showLoading, hideLoading } = useLoading();
-  
+  const { isAuthenticated: authContextIsAuthenticated, user: authContextUser } = useAuth();
+
   const [user, setUser] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
@@ -179,19 +181,117 @@ export default function CheckoutScreen() {
   // Get user data and addresses on mount
   useEffect(() => {
     const fetchUserAndAddresses = async () => {
-      // Check if user is authenticated
-      const isAuthenticated = await authService.isAuthenticated();
-      
-      if (!isAuthenticated) {
-        // Redirect to login if not authenticated
+      try {
+        // Use AuthContext instead of direct authService call
+        if (!authContextIsAuthenticated) {
+          // Redirect to login if not authenticated
+          Alert.alert(
+            'Login Required',
+            'Silakan login terlebih dahulu untuk melanjutkan checkout',
+            [
+              {
+                text: 'Login',
+                onPress: () => {
+                  // Navigate to login screen
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' as any }],
+                  });
+                }
+              },
+              {
+                text: 'Batal',
+                onPress: () => navigation.goBack(),
+                style: 'cancel'
+              }
+            ]
+          );
+          return;
+        }
+
+        if (!authContextUser) {
+          // User data is missing, treat as not authenticated
+          Alert.alert(
+            'Session Expired',
+            'Sesi login Anda telah berakhir. Silakan login kembali.',
+            [
+              {
+                text: 'Login',
+                onPress: () => {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' as any }],
+                  });
+                }
+              },
+              {
+                text: 'Batal',
+                onPress: () => navigation.goBack(),
+                style: 'cancel'
+              }
+            ]
+          );
+          return;
+        }
+
+        setUser(authContextUser);
+
+        // Load addresses from Odoo
+        try {
+          const odooAddresses = await odooAddressService.getUserAddresses();
+          if (odooAddresses.length > 0) {
+            // Find default address or use first one
+            const defaultAddr = odooAddresses.find(addr => addr.is_default_shipping) || odooAddresses[0];
+
+            // Try to parse extended data from street2 field
+            let extendedData: any = {};
+            try {
+              if (defaultAddr.street2 && defaultAddr.street2.startsWith('{')) {
+                extendedData = JSON.parse(defaultAddr.street2);
+              }
+            } catch (e) {
+              // If parsing fails, treat street2 as plain detail text
+              extendedData = { detail: defaultAddr.street2 };
+            }
+
+            // Convert to our Address format
+            const convertedAddress: Address = {
+              id: defaultAddr.id.toString(),
+              label: defaultAddr.type || 'Rumah',
+              name: defaultAddr.name,
+              phone: defaultAddr.phone || defaultAddr.mobile || '',
+              fullAddress: defaultAddr.street || '',
+              detail: extendedData.detail || defaultAddr.street2 || '',
+              postalCode: defaultAddr.zip || '',
+              isDefault: defaultAddr.is_default_shipping || false,
+              latitude: defaultAddr.partner_latitude,
+              longitude: defaultAddr.partner_longitude,
+              province: extendedData.province || (defaultAddr.state_id ? defaultAddr.state_id[1] : ''),
+              city: defaultAddr.city || '',
+              district: extendedData.district || '',
+              subDistrict: extendedData.subDistrict || '',
+              // Include KiriminAja IDs for shipping
+              province_id: extendedData.province_id,
+              city_id: extendedData.city_id,
+              district_id: extendedData.district_id,
+              subdistrict_id: extendedData.subdistrict_id,
+            };
+
+            setSelectedAddress(convertedAddress);
+          }
+        } catch (error) {
+          console.error('Failed to load addresses:', error);
+          // Don't show error for address loading, user can still proceed
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
         Alert.alert(
-          'Login Required',
-          'Silakan login terlebih dahulu untuk melanjutkan checkout',
+          'Authentication Error',
+          'Terjadi kesalahan saat memverifikasi sesi Anda. Silakan login kembali.',
           [
             {
               text: 'Login',
               onPress: () => {
-                // Navigate to login screen
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Login' as any }],
@@ -205,57 +305,7 @@ export default function CheckoutScreen() {
             }
           ]
         );
-        return;
       }
-      
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-      
-      // Load addresses from Odoo
-      try {
-        const odooAddresses = await odooAddressService.getUserAddresses();
-        if (odooAddresses.length > 0) {
-          // Find default address or use first one
-          const defaultAddr = odooAddresses.find(addr => addr.is_default_shipping) || odooAddresses[0];
-          
-          // Try to parse extended data from street2 field
-          let extendedData: any = {};
-          try {
-            if (defaultAddr.street2 && defaultAddr.street2.startsWith('{')) {
-              extendedData = JSON.parse(defaultAddr.street2);
-            }
-          } catch (e) {
-            // If parsing fails, treat street2 as plain detail text
-            extendedData = { detail: defaultAddr.street2 };
-          }
-
-          // Convert to our Address format
-          const convertedAddress: Address = {
-            id: defaultAddr.id.toString(),
-            label: defaultAddr.type || 'Rumah',
-            name: defaultAddr.name,
-            phone: defaultAddr.phone || defaultAddr.mobile || '',
-            fullAddress: defaultAddr.street || '',
-            detail: extendedData.detail || defaultAddr.street2 || '',
-            postalCode: defaultAddr.zip || '',
-            isDefault: defaultAddr.is_default_shipping || false,
-            latitude: defaultAddr.partner_latitude,
-            longitude: defaultAddr.partner_longitude,
-            province: extendedData.province || (defaultAddr.state_id ? defaultAddr.state_id[1] : ''),
-            city: defaultAddr.city || '',
-            district: extendedData.district || '',
-            subDistrict: extendedData.subDistrict || '',
-            // Include KiriminAja IDs for shipping
-            province_id: extendedData.province_id,
-            city_id: extendedData.city_id,
-            district_id: extendedData.district_id,
-            subdistrict_id: extendedData.subdistrict_id,
-          };
-          
-          setSelectedAddress(convertedAddress);
-        }
-      } catch (error) {
-        }
     };
     fetchUserAndAddresses();
   }, []);
