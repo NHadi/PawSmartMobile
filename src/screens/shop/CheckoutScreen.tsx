@@ -27,6 +27,7 @@ import paymentGatewayService from '../../services/payment/paymentGatewayService'
 import { useLoading } from '../../hooks/useLoading';
 import { Address } from './AddressListScreen';
 import standaloneAddressService from '../../services/address/standaloneAddressService';
+import defaultAddressService from '../../services/address/defaultAddressService';
 import AutoKirimModal from '../../components/modals/AutoKirimModal';
 
 const autoKirimIcon = require('../../../assets/icons/order/auto_kirim.png');
@@ -267,6 +268,41 @@ export default function CheckoutScreen() {
             };
 
             setSelectedAddress(convertedAddress);
+          } else {
+            // If no default address found in API, try to get default from local storage
+            console.log('No default address found in API, checking local storage...');
+            try {
+              const defaultAddressId = await defaultAddressService.getDefaultAddressId();
+              if (defaultAddressId) {
+                const defaultAddr = addresses.find(addr => addr.id.toString() === defaultAddressId);
+                if (defaultAddr) {
+                  const convertedDefaultAddress: Address = {
+                    id: defaultAddr.id.toString(),
+                    label: defaultAddr.label || 'Rumah',
+                    name: defaultAddr.recipient_name,
+                    phone: defaultAddr.phone || '',
+                    fullAddress: defaultAddr.address_line1,
+                    detail: defaultAddr.address_line2 || '',
+                    postalCode: defaultAddr.postal_code,
+                    isDefault: defaultAddr.is_default,
+                    latitude: defaultAddr.latitude,
+                    longitude: defaultAddr.longitude,
+                    province: defaultAddr.state,
+                    city: defaultAddr.city,
+                    district: defaultAddr.district,
+                    subDistrict: defaultAddr.subdistrict,
+                    province_id: undefined,
+                    city_id: undefined,
+                    district_id: undefined,
+                    subdistrict_id: undefined,
+                  };
+                  setSelectedAddress(convertedDefaultAddress);
+                  console.log('Set default address from local storage');
+                }
+              }
+            } catch (localError) {
+              console.log('No default address found in local storage');
+            }
           }
         } catch (error) {
           console.error('Failed to load addresses:', error);
@@ -804,13 +840,13 @@ export default function CheckoutScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         {/* Customer Details */}
-        {renderSection('Detail Pelanggan', undefined, 
+        {renderSection('Detail Pelanggan', undefined,
           <View style={styles.addressContent}>
             <Text style={styles.addressName}>Nama</Text>
-            <Text style={styles.addressValue}>{user?.name || 'Wahyu Muhtiyantoro'}</Text>
-            
+            <Text style={styles.addressValue}>{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name || user?.firstName || 'Nama Pelanggan'}</Text>
+
             <Text style={styles.addressName}>No. Handphone</Text>
-            <Text style={styles.addressValue}>{user?.phone || '+62 8123456890'}</Text>
+            <Text style={styles.addressValue}>{user?.phone || 'No. Handphone'}</Text>
             
             <View style={styles.addressSection}>
               <View style={styles.addressSectionHeader}>
@@ -820,10 +856,28 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
               </View>
               {selectedAddress ? (
-                <Text style={styles.addressValue}>
-                  {selectedAddress.fullAddress}{'\n'}
-                  {selectedAddress.district} - {selectedAddress.city} {selectedAddress.postalCode}
-                </Text>
+                <View>
+                  <Text style={styles.addressValue}>
+                    {selectedAddress.fullAddress}
+                  </Text>
+                  {selectedAddress.detail && selectedAddress.detail.trim() !== '' && (
+                    <Text style={styles.addressValue}>
+                      {selectedAddress.detail}
+                    </Text>
+                  )}
+                  <Text style={styles.addressValue}>
+                    {selectedAddress.city && (
+                      <>
+                        {selectedAddress.district && `${selectedAddress.district}, `}{selectedAddress.city}
+                      </>
+                    )}
+                    {selectedAddress.postalCode && ` ${selectedAddress.postalCode}`}
+                    {selectedAddress.province && `, ${selectedAddress.province}`}
+                  </Text>
+                  <Text style={styles.addressValue}>
+                    {selectedAddress.name} • {selectedAddress.phone}
+                  </Text>
+                </View>
               ) : (
                 <TouchableOpacity 
                   style={styles.addAddressButton}
