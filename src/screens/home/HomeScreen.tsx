@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialIcons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
@@ -385,61 +386,113 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ImageBackground
-        source={require('../../../assets/background.jpg')}
-        style={styles.headerBackground}
-        resizeMode="cover"
-      >
-        <View style={styles.headerOverlay} />
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-          {/* Professional Header */}
+      {/* Blue Header Section with Wave */}
+      <View style={styles.blueHeaderSection}>
+        <SafeAreaView edges={['top']}>
+          {/* Search Bar and Icons */}
           <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={22} color="#9CA3AF" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Butuh apa hari ini?"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9CA3AF"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialIcons name="clear" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        </View>
-        
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <View style={styles.iconWrapper}>
-            <MaterialIcons name="shopping-cart" size={22} color="#16A6D9" />
-            {totalItems > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {totalItems > 99 ? '99+' : totalItems}
-                </Text>
+            <View style={styles.searchContainer}>
+              <MaterialIcons name="search" size={20} color="#9CA3AF" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Butuh apa hari ini?"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#9CA3AF"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <MaterialIcons name="clear" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Cart')}
+            >
+              <View style={styles.iconWrapper}>
+                <MaterialIcons name="shopping-cart" size={22} color="#1976D2" />
+                {totalItems > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {totalItems > 99 ? '99+' : totalItems}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('NotificationScreen')}
+            >
+              <View style={styles.iconWrapper}>
+                <MaterialIcons name="notifications" size={22} color="#1976D2" />
+                <View style={styles.notificationDot} />
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={() => navigation.navigate('NotificationScreen')}
-        >
-          <View style={styles.iconWrapper}>
-            <MaterialIcons name="notifications" size={22} color="#16A6D9" />
-            <View style={styles.notificationDot} />
+
+          {/* Mascot and Welcome Text */}
+          <View style={styles.welcomeSection}>
+            <Image
+              source={require('../../../assets/home/hello.png')}
+              style={styles.mascot}
+              resizeMode="contain"
+            />
+            <View style={styles.welcomeTextContainer}>
+              <Text style={styles.welcomeText}>Waktunya Happy</Text>
+              <Text style={styles.welcomeText}>Shopping untuk Paw-mu!</Text>
+            </View>
+
+            {/* Paw Print Decorations - White - More scattered throughout */}
+            <View style={styles.pawPrint1}>
+              <MaterialIcons name="pets" size={24} color="rgba(255, 255, 255, 0.3)" />
+            </View>
+            <View style={styles.pawPrint2}>
+              <MaterialIcons name="pets" size={18} color="rgba(255, 255, 255, 0.25)" />
+            </View>
+            <View style={styles.pawPrint3}>
+              <MaterialIcons name="pets" size={20} color="rgba(255, 255, 255, 0.2)" />
+            </View>
+            <View style={styles.pawPrint4}>
+              <MaterialIcons name="pets" size={16} color="rgba(255, 255, 255, 0.25)" />
+            </View>
+            <View style={styles.pawPrint5}>
+              <MaterialIcons name="pets" size={22} color="rgba(255, 255, 255, 0.2)" />
+            </View>
           </View>
-        </TouchableOpacity>
+
+          {/* Additional Paw Prints scattered in header area */}
+          <View style={styles.pawPrintHeader1}>
+            <MaterialIcons name="pets" size={20} color="rgba(255, 255, 255, 0.2)" />
+          </View>
+          <View style={styles.pawPrintHeader2}>
+            <MaterialIcons name="pets" size={16} color="rgba(255, 255, 255, 0.15)" />
+          </View>
+          <View style={styles.pawPrintHeader3}>
+            <MaterialIcons name="pets" size={18} color="rgba(255, 255, 255, 0.25)" />
           </View>
         </SafeAreaView>
-      </ImageBackground>
 
-      <ScrollView 
+        {/* Bottom Wave Effect - Realistic SVG Wave */}
+        <View style={styles.waveContainer}>
+          <Svg
+            height="80"
+            width={width}
+            viewBox={`0 0 ${width} 80`}
+            style={styles.waveSvg}
+          >
+            <Path
+              d={`M0,40 C${width * 0.15},20 ${width * 0.35},20 ${width * 0.5},40 C${width * 0.65},60 ${width * 0.85},60 ${width},40 L${width},80 L0,80 Z`}
+              fill="#FFFFFF"
+            />
+          </Svg>
+        </View>
+      </View>
+
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -450,18 +503,7 @@ export default function HomeScreen() {
           />
         }>
 
-        {/* Banner Section - PET CARE CENTER */}
-        <View style={styles.bannerContainer}>
-          <TouchableOpacity activeOpacity={0.95}>
-            <Image
-              source={banners[0].image}
-              style={styles.bannerImage}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Service Icons Grid */}
+        {/* Service Icons Grid - in White Section */}
         <View style={styles.servicesSection}>
           <View style={styles.servicesGrid}>
             {/* First Row */}
@@ -575,68 +617,29 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Promotional Carousel Section */}
-        <View style={styles.carouselSection}>
-          <ImageBackground
-            source={require('../../../assets/background.jpg')}
-            style={styles.carouselBackground}
-            resizeMode="cover"
-          >
-            <View style={styles.carouselOverlay} />
-            <Text style={styles.carouselTitle}>Temukan Merek Favorit Anda di Sini!</Text>
-            <Text style={styles.carouselSubtitle}>Pilihan Paling Disukai, Cukup Klik!</Text>
-          
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            style={styles.carouselContainer}
-            contentContainerStyle={styles.carouselContent}
-          >
-            <TouchableOpacity activeOpacity={0.95} style={styles.carouselItem}>
-              <Image 
-                source={require('../../../assets/corrousal/Card.png')} 
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.95} style={styles.carouselItem}>
-              <Image 
-                source={require('../../../assets/corrousal/Card-1.png')} 
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.95} style={styles.carouselItem}>
-              <Image 
-                source={require('../../../assets/corrousal/Card-2.png')} 
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.95} style={styles.carouselItem}>
-              <Image 
-                source={require('../../../assets/corrousal/Card-3.png')} 
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.95} style={styles.carouselItem}>
-              <Image 
-                source={require('../../../assets/corrousal/Card-4.png')} 
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.95} style={styles.carouselItem}>
-              <Image 
-                source={require('../../../assets/corrousal/Card-5.png')} 
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          </ScrollView>
-          </ImageBackground>
+        {/* Promo Banner */}
+        <View style={styles.promoBannerSection}>
+          <View style={styles.promoBanner}>
+            <View style={styles.promoContent}>
+              <Text style={styles.promoTitle}>Promo Tahun Baru</Text>
+              <Text style={styles.promoDiscount}>Diskon 40%</Text>
+              <TouchableOpacity style={styles.promoButton}>
+                <Text style={styles.promoButtonText}>Beli Sekarang</Text>
+              </TouchableOpacity>
+            </View>
+            <Image
+              source={require('../../../assets/home/dog.png')}
+              style={styles.promoImage}
+              resizeMode="contain"
+            />
+            {/* Paw decorations - White */}
+            <View style={styles.promoPaw1}>
+              <MaterialIcons name="pets" size={24} color="rgba(255, 255, 255, 0.2)" />
+            </View>
+            <View style={styles.promoPaw2}>
+              <MaterialIcons name="pets" size={18} color="rgba(255, 255, 255, 0.15)" />
+            </View>
+          </View>
         </View>
 
         {/* Best Selling Products */}
@@ -721,38 +724,34 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  headerBackground: {
-    paddingBottom: 0,
-  },
-  headeroverlay: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#FFFFFF',
   },
-  safeArea: {
-    backgroundColor: 'transparent',
-  },
   scrollContent: {
-    paddingBottom: 0,
+    paddingBottom: 20,
   },
+
+  // Blue Header Section
+  blueHeaderSection: {
+    backgroundColor: '#1565C0',
+    paddingBottom: 0,
+    position: 'relative',
+  },
+
   header: {
-    backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
-    zIndex: 10,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    height: 42,
   },
   searchInput: {
     flex: 1,
@@ -763,13 +762,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.regular,
   },
   iconButton: {
-    position: 'relative',
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 21,
   },
   iconWrapper: {
     position: 'relative',
@@ -778,132 +776,219 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerIcon: {
-    width: 24,
-    height: 24,
-  },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: -4,
+    right: -4,
     backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
   },
   badgeText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontFamily: Typography.fontFamily.semibold,
   },
-  bannerContainer: {
-    backgroundColor: 'white',
-    paddingHorizontal: Spacing.base,
-    paddingTop: Spacing.base,
-    paddingBottom: Spacing.base,
+  notificationDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
   },
-  bannerImage: {
-    width: width - (Spacing.base * 2),
-    height: 160,
-    borderRadius: BorderRadius.lg,
+
+  // Welcome Section
+  welcomeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 70,
+    position: 'relative',
   },
+  mascot: {
+    width: 90,
+    height: 90,
+    marginRight: 12,
+  },
+  welcomeTextContainer: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontFamily: Typography.fontFamily.semibold,
+    color: '#FFFFFF',
+    lineHeight: 22,
+  },
+
+  // Paw Print Decorations - White Icons - More scattered
+  pawPrint1: {
+    position: 'absolute',
+    top: 10,
+    right: 30,
+  },
+  pawPrint2: {
+    position: 'absolute',
+    top: 50,
+    right: 60,
+  },
+  pawPrint3: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+  },
+  pawPrint4: {
+    position: 'absolute',
+    top: 30,
+    right: 100,
+  },
+  pawPrint5: {
+    position: 'absolute',
+    bottom: 50,
+    right: 80,
+  },
+  // Additional header paw prints
+  pawPrintHeader1: {
+    position: 'absolute',
+    top: 80,
+    left: 30,
+  },
+  pawPrintHeader2: {
+    position: 'absolute',
+    top: 60,
+    left: 120,
+  },
+  pawPrintHeader3: {
+    position: 'absolute',
+    top: 100,
+    right: 150,
+  },
+
+  // Bottom Wave Effect - Realistic SVG Wave
+  waveContainer: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  waveSvg: {
+    position: 'absolute',
+    bottom: 0,
+  },
+  // Services Section
   servicesSection: {
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.lg,
-    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
   },
   servicesGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   serviceItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: 4,
   },
   serviceIconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
   },
   serviceIcon: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
   },
-  serviceLabel: {
-    fontSize: Typography.fontSize.sm,
-    color: '#333',
-    fontFamily: Typography.fontFamily.medium,
-    textAlign: 'center',
-  },
-  section: {
-    paddingHorizontal: Spacing.base,
-    backgroundColor: 'white',
-    paddingVertical: Spacing.base,
-    marginTop: 0,
-  },
-  sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  sectionSubtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.md,
-  },
-  carouselSection: {
-    marginBottom: 0,
-  },
-  carouselBackground: {
-    paddingVertical: Spacing.lg,
-  },
-  carouseloverlay: {
-    ...StyleSheet.absoluteFillObject,
+
+  // Promo Banner
+  promoBannerSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
   },
-  carouselTitle: {
-    fontSize: Typography.fontSize.lg,
+  promoBanner: {
+    backgroundColor: '#1976D2',
+    borderRadius: 16,
+    flexDirection: 'row',
+    padding: 20,
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  promoContent: {
+    flex: 1,
+    zIndex: 2,
+  },
+  promoTitle: {
+    fontSize: 14,
+    fontFamily: Typography.fontFamily.semibold,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  promoDiscount: {
+    fontSize: 26,
     fontFamily: Typography.fontFamily.bold,
-    color: 'white',
-    textAlign: 'left',
-    marginBottom: Spacing.xs,
-    paddingHorizontal: Spacing.base,
+    color: '#FFFFFF',
+    marginBottom: 12,
   },
-  carouselSubtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'left',
-    marginBottom: Spacing.lg,
-    paddingHorizontal: Spacing.base,
+  promoButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  carouselContainer: {
-    paddingLeft: Spacing.base,
+  promoButtonText: {
+    fontSize: 12,
+    fontFamily: Typography.fontFamily.semibold,
+    color: '#1976D2',
   },
-  carouselContent: {
-    paddingRight: Spacing.base,
-  },
-  carouselItem: {
-    marginRight: Spacing.md,
-  },
-  carouselImage: {
+  promoImage: {
     width: 140,
-    height: 180,
-    borderRadius: BorderRadius.md,
+    height: 140,
+    position: 'absolute',
+    right: 0,
+    bottom: -15,
+  },
+  promoPaw1: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+  },
+  promoPaw2: {
+    position: 'absolute',
+    bottom: 60,
+    right: 120,
+  },
+  // Product Section
+  section: {
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: Typography.fontFamily.bold,
+    color: Colors.text.primary,
+  },
+  searchResultsCount: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    fontStyle: 'italic',
   },
   categoryTabs: {
     marginVertical: Spacing.md,
@@ -949,71 +1034,71 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
     height: 280,
   },
-  discountBadge: {
-    position: 'absolute',
-    top: Spacing.sm,
-    left: Spacing.sm,
-    backgroundColor: Colors.error.main,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    zIndex: 2,
-  },
-  discountText: {
-    color: Colors.text.white,
-    fontSize: Typography.fontSize.xs,
-    fontFamily: Typography.fontFamily.semibold,
-  },
   productImage: {
     width: '100%',
     height: 160,
     backgroundColor: '#F8F9FA',
   },
+  discountBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#E53935',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 2,
+  },
+  discountText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontFamily: Typography.fontFamily.semibold,
+  },
   recommendedBadge: {
     position: 'absolute',
     top: 135,
-    left: Spacing.sm,
+    left: 8,
     backgroundColor: '#FF6B35',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 2,
   },
   recommendedText: {
-    color: Colors.text.white,
-    fontSize: Typography.fontSize.xs,
+    color: '#FFFFFF',
+    fontSize: 11,
     fontFamily: Typography.fontFamily.medium,
     marginLeft: 2,
   },
   productInfo: {
-    padding: Spacing.sm,
+    padding: 12,
     paddingBottom: 50,
   },
   productName: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: 13,
     color: Colors.text.primary,
     fontFamily: Typography.fontFamily.medium,
-    marginBottom: Spacing.xs,
+    marginBottom: 4,
     lineHeight: 16,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: 4,
   },
   ratingText: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: 11,
     color: Colors.text.secondary,
     marginLeft: 2,
   },
   soldText: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: 11,
     color: Colors.text.tertiary,
   },
   priceContainer: {
-    marginTop: Spacing.xs,
+    marginTop: 4,
   },
   priceRow: {
     flexDirection: 'row',
@@ -1021,28 +1106,16 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   currentPrice: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.primary.main,
+    fontSize: 14,
+    color: '#1976D2',
     fontFamily: Typography.fontFamily.semibold,
     marginLeft: 4,
   },
   originalPrice: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: 11,
     color: Colors.text.tertiary,
     textDecorationLine: 'line-through',
     marginLeft: 4,
-  },
-  discountBadge: {
-    backgroundColor: Colors.error.main,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-    marginTop: 4,
-  },
-  discountText: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.text.white,
-    fontFamily: Typography.fontFamily.bold,
   },
   addButton: {
     position: 'absolute',
@@ -1178,16 +1251,5 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  searchResultsCount: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    fontStyle: 'italic',
   },
 });
