@@ -93,7 +93,7 @@ class StandaloneProductService {
         if (filter.offset) params.append('offset', filter.offset.toString());
       }
 
-      const response = await fetch(`${this.baseURL}/products?${params.toString()}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/products?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ class StandaloneProductService {
    */
   async getProductById(id: string | number): Promise<Product | null> {
     try {
-      const response = await fetch(`${this.baseURL}/products/${id}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/products/${id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ class StandaloneProductService {
    */
   async getCategories(): Promise<ProductCategory[]> {
     try {
-      const response = await fetch(`${this.baseURL}/products/categories`, {
+      const response = await fetch(`${this.baseURL}/api/v1/products/categories`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +173,7 @@ class StandaloneProductService {
    */
   async getBrands(): Promise<ProductBrand[]> {
     try {
-      const response = await fetch(`${this.baseURL}/products/brands`, {
+      const response = await fetch(`${this.baseURL}/api/v1/products/brands`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +199,7 @@ class StandaloneProductService {
    */
   async getRecommendedProducts(limit: number = 10): Promise<Product[]> {
     try {
-      const response = await fetch(`${this.baseURL}/products/recommended?limit=${limit}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/products/recommended?limit=${limit}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -226,7 +226,7 @@ class StandaloneProductService {
    */
   async searchProducts(query: string): Promise<Product[]> {
     try {
-      const response = await fetch(`${this.baseURL}/products/search?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/products/search?q=${encodeURIComponent(query)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

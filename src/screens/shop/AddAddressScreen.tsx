@@ -19,8 +19,7 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
-import odooAddressService from '../../services/address/odooAddressService';
-import defaultAddressService from '../../services/address/defaultAddressService';
+import standaloneAddressService, { CreateAddressRequest } from '../../services/address/standaloneAddressService';
 import { Address } from './AddressListScreen';
 
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'AddAddress'>;
@@ -113,54 +112,36 @@ export default function AddAddressScreen() {
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    // Prepare address data for standalone API
+    const addressRequest: CreateAddressRequest = {
+      label: formData.label || (isEditing ? existingAddress?.label || 'Alamat' : 'Alamat'),
+      recipient_name: formData.name!,
+      phone: formData.phone!,
+      address_line1: formData.fullAddress!,
+      address_line2: formData.detail || '',
+      district: formData.district || '',
+      subdistrict: formData.subDistrict || '',
+      city: formData.city || '',
+      state: formData.province || '',
+      postal_code: formData.postalCode!,
+      country: 'Indonesia',
+      latitude: formData.latitude,
+      longitude: formData.longitude,
+      is_default: formData.isDefault || false,
+      notes: '',
+    };
+
     try {
-      let addressId: number | string;
-
-      // Prepare extended location data for shipping
-      const extendedData = JSON.stringify({
-        detail: formData.detail || '',
-        province: formData.province || '',
-        district: formData.district || '',
-        subDistrict: formData.subDistrict || '',
-        province_id: formData.province_id,
-        city_id: formData.city_id,
-        district_id: formData.district_id,
-        subdistrict_id: formData.subdistrict_id,
-      });
-
       if (isEditing && existingAddress) {
-        // Update existing address in Odoo
-        await odooAddressService.updateAddress(parseInt(existingAddress.id), {
-          name: formData.name!,
-          phone: formData.phone!,
-          street: formData.fullAddress!,
-          street2: extendedData,
-          city: formData.city || '',
-          zip: formData.postalCode!,
-          partner_latitude: formData.latitude,
-          partner_longitude: formData.longitude,
-        });
-        addressId = existingAddress.id;
+        // Update existing address in standalone API
+        await standaloneAddressService.updateAddress(existingAddress.id, addressRequest);
+        console.log('Address updated successfully via standalone API');
       } else {
-        // Create new address in Odoo
-        const newAddress = await odooAddressService.createAddress({
-          name: formData.name!,
-          phone: formData.phone!,
-          street: formData.fullAddress!,
-          street2: extendedData,
-          city: formData.city || '',
-          zip: formData.postalCode!,
-          latitude: formData.latitude,
-          longitude: formData.longitude,
-        });
-        addressId = newAddress.id;
+        // Create new address in standalone API
+        await standaloneAddressService.createAddress(addressRequest);
+        console.log('Address created successfully via standalone API');
       }
-      
-      // Handle default address locally
-      if (formData.isDefault) {
-        await defaultAddressService.setDefaultAddress(addressId);
-      }
-      
+
       // Clear the form storage since save was successful
       try {
         await AsyncStorage.removeItem(FORM_STORAGE_KEY);
@@ -176,8 +157,67 @@ export default function AddAddressScreen() {
           });
         }}
       ]);
+    } catch (error: any) {
+      console.error('Save address error:', error);
+
+      // Check if it's an authentication error
+      if (error.message?.includes('Not authenticated') || error.message?.includes('Unauthorized')) {
+        Alert.alert('Authentication Error', 'Sesi login Anda telah berakhir. Silakan login kembali.', [
+          {
+            text: 'Login',
+            onPress: () => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' as any }],
+              });
+            }
+          },
+          {
+            text: 'Batal',
+            style: 'cancel'
+          }
+        ]);
+      } else {
+        Alert.alert('Error', error.message || 'Gagal menyimpan alamat. Silakan coba lagi.');
+      }
+    }
+  };
+
+  /**
+   * Retrieve addresses from api/v1/addresses endpoint using GET method
+   * Similar to auth/me endpoint for bearer token usage
+   */
+  const retrieveAddresses = async (): Promise<Address[]> => {
+    try {
+      console.log('Retrieving addresses from standalone API...');
+      const addresses = await standaloneAddressService.getAddresses();
+      console.log('Successfully retrieved addresses:', addresses.length);
+      return addresses;
     } catch (error) {
-      Alert.alert('Error', 'Gagal menyimpan alamat');
+      console.error('Failed to retrieve addresses from standalone API:', error);
+
+      // You can add fallback logic here if needed
+      // For now, just re-throw the error
+      throw error;
+    }
+  };
+
+  /**
+   * Save address to api/v1/addresses endpoint using POST method
+   * Uses bearer token similar to auth/me endpoint pattern
+   */
+  const saveAddress = async (addressData: CreateAddressRequest): Promise<Address> => {
+    try {
+      console.log('Saving address to standalone API...', addressData);
+      const savedAddress = await standaloneAddressService.createAddress(addressData);
+      console.log('Successfully saved address:', savedAddress);
+      return savedAddress;
+    } catch (error) {
+      console.error('Failed to save address to standalone API:', error);
+
+      // You can add fallback logic here if needed
+      // For now, just re-throw the error
+      throw error;
     }
   };
 

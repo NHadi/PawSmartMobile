@@ -8,6 +8,12 @@ const AUTH_TOKEN_KEY = config.STORAGE_KEYS.AUTH_TOKEN;
 const REFRESH_TOKEN_KEY = config.STORAGE_KEYS.REFRESH_TOKEN;
 const USER_DATA_KEY = config.STORAGE_KEYS.USER_DATA;
 
+console.log('=== STANDALONE AUTH SERVICE INIT ===');
+console.log('AUTH_TOKEN_KEY:', AUTH_TOKEN_KEY);
+console.log('REFRESH_TOKEN_KEY:', REFRESH_TOKEN_KEY);
+console.log('USER_DATA_KEY:', USER_DATA_KEY);
+console.log('===================================');
+
 // Export interfaces to match API swagger specification
 export interface LoginCredentials {
   username: string; // Can be username, email, or phone
@@ -80,7 +86,7 @@ class StandaloneAuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/login`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,6 +95,10 @@ class StandaloneAuthService {
       });
 
       const data = await response.json();
+      console.log('=== LOGIN RESPONSE DEBUG ===');
+      console.log('Response success:', data.success);
+      console.log('Response data structure:', JSON.stringify(data, null, 2));
+      console.log('============================');
 
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
@@ -98,10 +108,34 @@ class StandaloneAuthService {
         throw new Error(data.message || 'Invalid credentials');
       }
 
-      // Store auth data
-      await this.storeAuthData(data.data);
+      // Transform the response to match expected LoginResponse format
+      const transformedAuthData: LoginResponse = {
+        access_token: data.data.tokens.accessToken,
+        refresh_token: data.data.tokens.refreshToken,
+        expires_in: 3600, // Default 1 hour, adjust if needed
+        user: {
+          id: parseInt(data.data.user.id),
+          username: data.data.user.email,
+          email: data.data.user.email,
+          firstName: data.data.user.firstName,
+          lastName: data.data.user.lastName || '',
+          phone: '', // Add if available in response
+          role: data.data.user.role,
+          status: data.data.user.status,
+          lastLogin: data.data.user.lastLogin,
+        }
+      };
 
-      return data.data;
+      console.log('=== TRANSFORMED AUTH DATA ===');
+      console.log('Has access_token:', !!transformedAuthData.access_token);
+      console.log('Access token length:', transformedAuthData.access_token?.length || 0);
+      console.log('User data:', transformedAuthData.user);
+      console.log('==============================');
+
+      // Store auth data
+      await this.storeAuthData(transformedAuthData);
+
+      return transformedAuthData;
     } catch (error: any) {
       // Handle network errors
       if (error.message?.includes('Network') ||
@@ -120,7 +154,7 @@ class StandaloneAuthService {
    */
   async register(userData: RegisterData): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/register`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,10 +175,28 @@ class StandaloneAuthService {
         throw new Error(data.message || 'Registration failed');
       }
 
-      // Store auth data
-      await this.storeAuthData(data.data);
+      // Transform the response to match expected LoginResponse format
+      const transformedAuthData: LoginResponse = {
+        access_token: data.data.tokens.accessToken,
+        refresh_token: data.data.tokens.refreshToken,
+        expires_in: 3600, // Default 1 hour, adjust if needed
+        user: {
+          id: parseInt(data.data.user.id),
+          username: data.data.user.email,
+          email: data.data.user.email,
+          firstName: data.data.user.firstName,
+          lastName: data.data.user.lastName || '',
+          phone: userData.phone || '',
+          role: data.data.user.role,
+          status: data.data.user.status,
+          lastLogin: data.data.user.lastLogin,
+        }
+      };
 
-      return data.data;
+      // Store auth data
+      await this.storeAuthData(transformedAuthData);
+
+      return transformedAuthData;
     } catch (error: any) {
       if (error.message?.includes('Network') ||
           error.message?.includes('fetch') ||
@@ -162,7 +214,7 @@ class StandaloneAuthService {
    */
   async socialLogin(provider: 'google' | 'facebook' | 'apple', socialData: SocialLoginRequest): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/social/${provider}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/social/${provider}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,10 +232,28 @@ class StandaloneAuthService {
         throw new Error(data.message || 'Social login failed');
       }
 
-      // Store auth data
-      await this.storeAuthData(data.data);
+      // Transform the response to match expected LoginResponse format
+      const transformedAuthData: LoginResponse = {
+        access_token: data.data.tokens.accessToken,
+        refresh_token: data.data.tokens.refreshToken,
+        expires_in: 3600, // Default 1 hour, adjust if needed
+        user: {
+          id: parseInt(data.data.user.id),
+          username: data.data.user.email,
+          email: data.data.user.email,
+          firstName: data.data.user.firstName,
+          lastName: data.data.user.lastName || '',
+          phone: '', // Add if available in response
+          role: data.data.user.role,
+          status: data.data.user.status,
+          lastLogin: data.data.user.lastLogin,
+        }
+      };
 
-      return data.data;
+      // Store auth data
+      await this.storeAuthData(transformedAuthData);
+
+      return transformedAuthData;
     } catch (error: any) {
       throw error;
     }
@@ -197,7 +267,7 @@ class StandaloneAuthService {
     try {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (token) {
-        await fetch(`${this.baseURL}/auth/logout`, {
+        await fetch(`${this.baseURL}/api/v1/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -222,7 +292,7 @@ class StandaloneAuthService {
       const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
       if (!refreshToken) return null;
 
-      const response = await fetch(`${this.baseURL}/auth/refresh`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -254,7 +324,7 @@ class StandaloneAuthService {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (!token) return false;
 
-      const response = await fetch(`${this.baseURL}/auth/me`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -273,13 +343,20 @@ class StandaloneAuthService {
    */
   async getCurrentUser(): Promise<User | null> {
     try {
+      console.log('=== GET CURRENT USER ===');
+      console.log('Storage Key:', AUTH_TOKEN_KEY);
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      console.log('getCurrentUser - Token exists:', !!token); // Debug log
-      if (!token) return null;
+      console.log('Token exists:', !!token);
+      console.log('Token length:', token?.length || 0);
+      console.log('Token preview:', token ? token.substring(0, 30) + '...' : 'null');
 
-      const url = `${this.baseURL}/auth/me`;
-      console.log('getCurrentUser - Calling URL:', url); // Debug log
-      console.log('getCurrentUser - Token:', token.substring(0, 20) + '...'); // Debug log
+      if (!token) {
+        console.log('❌ No token found in storage');
+        return null;
+      }
+
+      const url = `${this.baseURL}/api/v1/auth/me`;
+      console.log('Calling URL:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -288,17 +365,19 @@ class StandaloneAuthService {
         },
       });
 
-      console.log('getCurrentUser - Response status:', response.status); // Debug log
+      console.log('Response status:', response.status);
 
       if (!response.ok) {
-        console.log('getCurrentUser - Response not OK'); // Debug log
+        console.log('❌ Response not OK:', response.status, response.statusText);
         return null;
       }
 
       const data = await response.json();
-      console.log('Auth/me response:', data); // Debug log
+      console.log('✅ Auth/me response success:', data.success);
+      console.log('========================');
       return data.success ? data.data : null;
     } catch (error) {
+      console.error('❌ Get current user error:', error);
       return null;
     }
   }
@@ -312,7 +391,7 @@ class StandaloneAuthService {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (!token) throw new Error('Not authenticated');
 
-      const response = await fetch(`${this.baseURL}/auth/change-password`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/change-password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -339,7 +418,7 @@ class StandaloneAuthService {
    */
   async forgotPassword(email: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/forgot-password`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -360,7 +439,7 @@ class StandaloneAuthService {
    */
   async resetPassword(resetData: PasswordResetConfirmRequest): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/reset-password`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -400,16 +479,20 @@ class StandaloneAuthService {
    * Store authentication data
    */
   private async storeAuthData(authData: LoginResponse): Promise<void> {
-    console.log('Storing auth data:', {
-      hasAccessToken: !!authData.access_token,
-      hasRefreshToken: !!authData.refresh_token,
-      hasUser: !!authData.user
-    });
+    console.log('=== STORING AUTH DATA ===');
+    console.log('Storage Key (AUTH_TOKEN_KEY):', AUTH_TOKEN_KEY);
+    console.log('Has access_token:', !!authData.access_token);
+    console.log('Access token length:', authData.access_token?.length || 0);
+    console.log('Access token preview:', authData.access_token ? authData.access_token.substring(0, 30) + '...' : 'null');
+    console.log('Has refresh_token:', !!authData.refresh_token);
+    console.log('Has user:', !!authData.user);
+    console.log('========================');
 
     if (authData.access_token) {
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, authData.access_token);
+      console.log('✅ Token stored successfully');
     } else {
-      console.warn('No access_token in auth data, skipping storage');
+      console.warn('❌ No access_token in auth data, skipping storage');
     }
 
     if (authData.refresh_token) {
@@ -471,7 +554,7 @@ class StandaloneAuthService {
    */
   async checkUsernameAvailability(username: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/check-username?username=${encodeURIComponent(username)}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/check-username?username=${encodeURIComponent(username)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -503,7 +586,7 @@ class StandaloneAuthService {
    */
   async checkEmailAvailability(email: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/check-email?email=${encodeURIComponent(email)}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/check-email?email=${encodeURIComponent(email)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -535,7 +618,7 @@ class StandaloneAuthService {
    */
   async checkPhoneNumberRegistered(phoneNumber: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/auth/check-phone?phone=${encodeURIComponent(phoneNumber)}`, {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/check-phone?phone=${encodeURIComponent(phoneNumber)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

@@ -26,7 +26,7 @@ import PaymentDetails from '../../components/payment/PaymentDetails';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import { useLoading } from '../../hooks/useLoading';
 import { Address } from './AddressListScreen';
-import odooAddressService from '../../services/address/odooAddressService';
+import standaloneAddressService from '../../services/address/standaloneAddressService';
 import AutoKirimModal from '../../components/modals/AutoKirimModal';
 
 const autoKirimIcon = require('../../../assets/icons/order/auto_kirim.png');
@@ -236,45 +236,34 @@ export default function CheckoutScreen() {
 
         setUser(authContextUser);
 
-        // Load addresses from Odoo
+        // Load addresses from standalone API
         try {
-          const odooAddresses = await odooAddressService.getUserAddresses();
-          if (odooAddresses.length > 0) {
+          const addresses = await standaloneAddressService.getAddresses();
+          if (addresses.length > 0) {
             // Find default address or use first one
-            const defaultAddr = odooAddresses.find(addr => addr.is_default_shipping) || odooAddresses[0];
-
-            // Try to parse extended data from street2 field
-            let extendedData: any = {};
-            try {
-              if (defaultAddr.street2 && defaultAddr.street2.startsWith('{')) {
-                extendedData = JSON.parse(defaultAddr.street2);
-              }
-            } catch (e) {
-              // If parsing fails, treat street2 as plain detail text
-              extendedData = { detail: defaultAddr.street2 };
-            }
+            const defaultAddr = addresses.find(addr => addr.is_default) || addresses[0];
 
             // Convert to our Address format
             const convertedAddress: Address = {
               id: defaultAddr.id.toString(),
-              label: defaultAddr.type || 'Rumah',
-              name: defaultAddr.name,
-              phone: defaultAddr.phone || defaultAddr.mobile || '',
-              fullAddress: defaultAddr.street || '',
-              detail: extendedData.detail || defaultAddr.street2 || '',
-              postalCode: defaultAddr.zip || '',
-              isDefault: defaultAddr.is_default_shipping || false,
-              latitude: defaultAddr.partner_latitude,
-              longitude: defaultAddr.partner_longitude,
-              province: extendedData.province || (defaultAddr.state_id ? defaultAddr.state_id[1] : ''),
-              city: defaultAddr.city || '',
-              district: extendedData.district || '',
-              subDistrict: extendedData.subDistrict || '',
-              // Include KiriminAja IDs for shipping
-              province_id: extendedData.province_id,
-              city_id: extendedData.city_id,
-              district_id: extendedData.district_id,
-              subdistrict_id: extendedData.subdistrict_id,
+              label: defaultAddr.label || 'Rumah',
+              name: defaultAddr.recipient_name,
+              phone: defaultAddr.phone || '',
+              fullAddress: defaultAddr.address_line1,
+              detail: defaultAddr.address_line2 || '',
+              postalCode: defaultAddr.postal_code,
+              isDefault: defaultAddr.is_default,
+              latitude: defaultAddr.latitude,
+              longitude: defaultAddr.longitude,
+              province: defaultAddr.state,
+              city: defaultAddr.city,
+              district: defaultAddr.district,
+              subDistrict: defaultAddr.subdistrict,
+              // Include KiriminAja IDs for shipping (if available in notes)
+              province_id: undefined,
+              city_id: undefined,
+              district_id: undefined,
+              subdistrict_id: undefined,
             };
 
             setSelectedAddress(convertedAddress);
@@ -427,10 +416,8 @@ export default function CheckoutScreen() {
   };
 
   const handleSelectAddress = async () => {
-    // Check if user is authenticated before navigating
-    const isAuthenticated = await authService.isAuthenticated();
-    
-    if (!isAuthenticated) {
+    // Use AuthContext instead of direct authService call
+    if (!authContextIsAuthenticated) {
       Alert.alert(
         'Login Required',
         'Silakan login terlebih dahulu untuk mengelola alamat',
@@ -452,12 +439,12 @@ export default function CheckoutScreen() {
       );
       return;
     }
-    
+
     // Navigate to address list
     // Navigate to AddressList in Home tab
     navigation.navigate('Home', {
       screen: 'AddressList',
-      params: { 
+      params: {
         isSelecting: true,
         selectedPayment, // Preserve payment selection
       }

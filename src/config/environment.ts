@@ -4,9 +4,8 @@ const isEASBuild = process.env.EAS_BUILD === 'true';
 const isProduction = process.env.NODE_ENV === 'production';
 
 export const config = {
-  // API Server Configuration (Migration from Odoo to Standalone API)
-  // Set USE_STANDALONE_API=true to use the new REST API instead of Odoo
-  USE_STANDALONE_API: 'true',
+  // API Server Configuration - Standalone API Only
+  USE_STANDALONE_API: true,
 
   // Legacy Odoo Server Configuration (kept for backward compatibility)
   ODOO: {
@@ -26,8 +25,8 @@ export const config = {
   STANDALONE_API: {
     BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL ||
       (__DEV__
-        ? 'http://43.157.209.126:3001/api/v1'     // Development API
-        : 'https://api.pawsmart.com/v1'), // Production API
+        ? 'http://43.157.209.126:3001'     // Development API
+        : 'https://api.pawsmart.com'), // Production API
     JWT_SECRET: process.env.EXPO_PUBLIC_JWT_SECRET || 'your-jwt-secret-key',
     TOKEN_REFRESH_THRESHOLD: 300, // Refresh token 5 minutes before expiry
   },
