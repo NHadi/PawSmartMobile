@@ -79,23 +79,23 @@ export default function AccountSettingsScreen() {
   const settingItems: SettingItem[] = [
     {
       id: '1',
-      icon: 'lock-outline',
+      icon: 'lock-closed',
       title: 'Ganti Password',
-      description: 'Ganti kata sandi lama Anda, lalu buat kata sandi baru untuk keamanan akun yang lebih baik.',
+      description: 'Ganti kata sandi lama Anda.',
       onPress: handleChangePassword,
     },
     {
       id: '2',
-      icon: 'logout',
+      icon: 'exit-outline',
       title: 'Keluar',
-      description: 'Apakah Anda yakin? Kamu harus login terlebih dahulu jika ingin kembali lagi.',
+      description: 'Kamu harus login terlebih dahulu jika ingin kembali lagi',
       onPress: handleLogout,
     },
     {
       id: '3',
-      icon: 'delete-outline',
-      title: 'Hapus Akun',
-      description: 'Akun Anda akan dihapus secara permanen.',
+      icon: 'trash-outline',
+      title: 'Hapus akun',
+      description: 'Akun anda dihapus secara permanen.',
       onPress: handleDeleteAccount,
     },
   ];
@@ -114,12 +114,15 @@ export default function AccountSettingsScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title */}
-        <Text style={styles.sectionTitle}>Pengaturan Akun</Text>
+        {/* Title with Blue Line */}
+        <View style={styles.sectionTitleContainer}>
+          <View style={styles.blueLine} />
+          <Text style={styles.sectionTitle}>Pengaturan Akun</Text>
+        </View>
 
         {/* Settings List */}
         <View style={styles.settingsList}>
@@ -128,34 +131,38 @@ export default function AccountSettingsScreen() {
               key={item.id}
               style={[
                 styles.settingItem,
-                index === settingItems.length - 1 && styles.lastItem,
+                index !== settingItems.length - 1 && styles.itemBorder,
               ]}
               onPress={item.onPress}
               activeOpacity={0.7}
             >
-              <View style={styles.settingIconContainer}>
-                <MaterialIcons 
-                  name={item.icon as any} 
-                  size={24} 
-                  color={item.id === '3' ? Colors.error.main : Colors.text.primary}
+              <View style={[
+                styles.settingIconContainer,
+                item.id === '2' && styles.logoutIconContainer,
+                item.id === '3' && styles.deleteIconContainer,
+              ]}>
+                <Ionicons
+                  name={item.icon as any}
+                  size={24}
+                  color={
+                    item.id === '2' ? '#E53935' :
+                    item.id === '3' ? '#E53935' :
+                    Colors.text.primary
+                  }
                 />
               </View>
               <View style={styles.settingContent}>
-                <Text style={[
-                  styles.settingTitle,
-                  item.id === '3' && styles.deleteTitle
-                ]}>
+                <Text style={styles.settingTitle}>
                   {item.title}
                 </Text>
                 <Text style={styles.settingDescription}>
                   {item.description}
                 </Text>
               </View>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
+              <Ionicons
+                name="chevron-forward"
+                size={20}
                 color={Colors.text.tertiary}
-                style={styles.chevron}
               />
             </TouchableOpacity>
           ))}
@@ -171,7 +178,7 @@ export default function AccountSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
@@ -201,44 +208,56 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.bold,
-    color: Colors.text.primary,
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.lg,
-    marginHorizontal: Spacing.lg,
+
+  // Section Title with Blue Line
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
+  blueLine: {
+    width: 4,
+    height: 20,
+    backgroundColor: '#1565C0',
+    marginRight: Spacing.sm,
+    borderRadius: 2,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.text.primary,
+  },
+
+  // Settings List
   settingsList: {
-    marginHorizontal: Spacing.lg,
     backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: Colors.shadow.main,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    paddingHorizontal: Spacing.lg,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
   },
-  lastItem: {
-    borderBottomWidth: 0,
+  itemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   settingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.background.secondary,
+    width: 45,
+    height: 45,
+    borderRadius: 23,
+    backgroundColor: '#E3F2FD',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
+  },
+  logoutIconContainer: {
+    backgroundColor: '#FFEBEE',
+  },
+  deleteIconContainer: {
+    backgroundColor: '#FFEBEE',
   },
   settingContent: {
     flex: 1,
@@ -246,20 +265,15 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.semibold,
+    fontFamily: Typography.fontFamily.medium,
     color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  deleteTitle: {
-    color: Colors.error.main,
+    marginBottom: 4,
   },
   settingDescription: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: Colors.text.secondary,
-    lineHeight: 20,
-  },
-  chevron: {
-    marginLeft: Spacing.sm,
+    lineHeight: 18,
+    fontFamily: Typography.fontFamily.regular,
   },
   bottomSpacing: {
     height: 100,

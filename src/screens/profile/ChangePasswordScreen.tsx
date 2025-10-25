@@ -138,128 +138,122 @@ export default function ChangePasswordScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Form */}
-        <View style={styles.form}>
+        {/* Form Card */}
+        <View style={styles.formCard}>
           {/* Old Password */}
           <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={Colors.text.tertiary} 
-                style={styles.inputIcon}
+            <Ionicons
+              name="lock-closed"
+              size={20}
+              color={Colors.text.tertiary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              value={oldPassword}
+              onChangeText={setOldPassword}
+              placeholder="Password Lama"
+              placeholderTextColor={Colors.text.tertiary}
+              secureTextEntry={!showOldPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              onPress={() => setShowOldPassword(!showOldPassword)}
+              style={styles.eyeButton}
+            >
+              <Ionicons
+                name={showOldPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={Colors.text.tertiary}
               />
-              <TextInput
-                style={styles.input}
-                value={oldPassword}
-                onChangeText={setOldPassword}
-                placeholder="Password Lama"
-                placeholderTextColor={Colors.text.tertiary}
-                secureTextEntry={!showOldPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowOldPassword(!showOldPassword)}
-                style={styles.eyeButton}
-              >
-                <Ionicons
-                  name={showOldPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={Colors.text.tertiary}
-                />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* New Password */}
           <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={Colors.text.tertiary} 
-                style={styles.inputIcon}
+            <Ionicons
+              name="lock-closed"
+              size={20}
+              color={Colors.text.tertiary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="Password Baru"
+              placeholderTextColor={Colors.text.tertiary}
+              secureTextEntry={!showNewPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              onPress={() => setShowNewPassword(!showNewPassword)}
+              style={styles.eyeButton}
+            >
+              <Ionicons
+                name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={Colors.text.tertiary}
               />
-              <TextInput
-                style={styles.input}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="Password Baru"
-                placeholderTextColor={Colors.text.tertiary}
-                secureTextEntry={!showNewPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowNewPassword(!showNewPassword)}
-                style={styles.eyeButton}
-              >
-                <Ionicons
-                  name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={Colors.text.tertiary}
-                />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Confirm Password */}
           <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={Colors.text.tertiary} 
-                style={styles.inputIcon}
+            <Ionicons
+              name="lock-closed"
+              size={20}
+              color={Colors.text.tertiary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Konfirmasi Password"
+              placeholderTextColor={Colors.text.tertiary}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={styles.eyeButton}
+            >
+              <Ionicons
+                name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={Colors.text.tertiary}
               />
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Konfirmasi Password"
-                placeholderTextColor={Colors.text.tertiary}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeButton}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={Colors.text.tertiary}
-                />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={Colors.text.white} />
+            ) : (
+              <Text style={styles.saveButtonText}>Simpan</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Forgot Password Link */}
+          <TouchableOpacity
+            style={styles.forgotPasswordContainer}
+            onPress={handleForgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>Lupa password? </Text>
+            <Text style={styles.forgotPasswordLink}>Kirim OTP</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={Colors.text.white} />
-          ) : (
-            <Text style={styles.saveButtonText}>Simpan</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Forgot Password Link */}
-        <TouchableOpacity 
-          style={styles.forgotPasswordContainer}
-          onPress={handleForgotPassword}
-        >
-          <Text style={styles.forgotPasswordText}>Lupa password? </Text>
-          <Text style={styles.forgotPasswordLink}>Kirim OTP</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Success Modal */}
@@ -326,7 +320,7 @@ export default function ChangePasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
@@ -357,27 +351,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Spacing.lg,
+  },
+
+  // Form Card
+  formCard: {
+    backgroundColor: Colors.background.primary,
+    paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl * 2,
   },
-  form: {
-    marginBottom: Spacing.xl,
-  },
+
   inputContainer: {
-    marginBottom: Spacing.lg,
-  },
-  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.primary,
+    backgroundColor: '#F5F5F5',
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
-    height: 56,
-    elevation: 1,
-    shadowColor: Colors.shadow.main,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    height: 50,
+    marginBottom: Spacing.md,
   },
   inputIcon: {
     marginRight: Spacing.sm,
@@ -386,18 +377,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Typography.fontSize.base,
     color: Colors.text.primary,
-    height: '100%',
+    fontFamily: Typography.fontFamily.regular,
   },
   eyeButton: {
-    padding: Spacing.sm,
+    padding: Spacing.xs,
     marginLeft: Spacing.xs,
   },
   saveButton: {
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#1565C0',
     borderRadius: BorderRadius.md,
     paddingVertical: Spacing.md,
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
     height: 50,
     justifyContent: 'center',
   },
@@ -413,15 +404,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   forgotPasswordText: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.regular,
   },
   forgotPasswordLink: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.primary.main,
+    fontSize: Typography.fontSize.sm,
+    color: '#1565C0',
     fontFamily: Typography.fontFamily.semibold,
   },
   modalOverlay: {
