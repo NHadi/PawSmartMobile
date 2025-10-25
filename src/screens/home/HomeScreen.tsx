@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
 
   // Blue Header Section
   blueHeaderSection: {
-    backgroundColor: '#1565C0',
+    backgroundColor: '#1C49C2',
     paddingBottom: 0,
     position: 'relative',
   },

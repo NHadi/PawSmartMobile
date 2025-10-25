@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   blueLine: {
     width: 4,
     height: 20,
-    backgroundColor: '#1565C0',
+    backgroundColor: '#1C49C2',
     marginRight: Spacing.sm,
     borderRadius: 2,
   },

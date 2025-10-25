@@ -137,7 +137,7 @@ export default function ProfileScreen() {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
+      <StatusBar barStyle="light-content" backgroundColor="#1C49C2" />
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
           {/* Header */}
@@ -170,7 +170,7 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.premiumBanner}>
               <View style={styles.premiumBannerContent}>
                 <View style={styles.premiumIconContainer}>
-                  <MaterialIcons name="workspace-premium" size={24} color="#1565C0" />
+                  <MaterialIcons name="workspace-premium" size={24} color="#1C49C2" />
                 </View>
                 <View style={styles.premiumTextContainer}>
                   <Text style={styles.premiumBannerTitle}>Premium +</Text>
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
 
   // Header Section
   header: {
-    backgroundColor: '#1565C0',
+    backgroundColor: '#1C49C2',
     paddingBottom: Spacing.md,
   },
   headerContent: {
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.semibold,
-    color: '#1565C0',
+    color: '#1C49C2',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.sm,

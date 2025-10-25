@@ -1,9 +1,9 @@
 export const Colors = {
   primary: {
-    main: '#00A3E0',
-    light: '#4EC3F0',
-    dark: '#0086B8',
-    gradient: ['#00A3E0', '#4EC3F0'],
+    main: '#1C49C2',
+    light: '#4A6FE3',
+    dark: '#153A9A',
+    gradient: ['#1C49C2', '#4A6FE3'],
   },
   secondary: {
     main: '#FF6B6B',

@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.xs,
   },
   saveButton: {
-    backgroundColor: '#1565C0',
+    backgroundColor: '#1C49C2',
     borderRadius: BorderRadius.md,
     paddingVertical: Spacing.md,
     alignItems: 'center',
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordLink: {
     fontSize: Typography.fontSize.sm,
-    color: '#1565C0',
+    color: '#1C49C2',
     fontFamily: Typography.fontFamily.semibold,
   },
   modalOverlay: {
