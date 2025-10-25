@@ -10,7 +10,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../contexts/AuthContext';
@@ -55,20 +55,30 @@ export default function ProfileScreen() {
   };
 
   const riwayatItems = [
-    { 
+    {
       icon: 'shopping-bag',
       label: 'Belanja',
       onPress: () => navigation.navigate('OrderHistory'),
     },
-    { 
+    {
       icon: 'stethoscope',
       label: 'Dokter',
       onPress: () => {},
       IconComponent: MaterialCommunityIcons,
     },
-    { 
+    {
       icon: 'content-cut',
       label: 'Salon',
+      onPress: () => {},
+    },
+    {
+      icon: 'hotel',
+      label: 'Hotel',
+      onPress: () => {},
+    },
+    {
+      icon: 'person',
+      label: 'Pengasuh',
       onPress: () => {},
     },
   ];
@@ -103,17 +113,23 @@ export default function ProfileScreen() {
     },
     {
       id: 'info',
-      title: 'Informasi',
+      title: 'Lainnya',
       items: [
-        { 
+        {
           icon: 'help-outline',
           label: 'FAQ',
           onPress: () => navigation.navigate('FAQ'),
         },
-        { 
+        {
           icon: 'description',
           label: 'Syarat & Ketentuan',
           onPress: () => navigation.navigate('TermsConditions'),
+        },
+        {
+          icon: 'logout',
+          label: 'Keluar dari Akun',
+          onPress: handleLogout,
+          isLogout: true,
         },
       ],
     },
@@ -121,7 +137,7 @@ export default function ProfileScreen() {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#00BCD4" />
+      <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
           {/* Header */}
@@ -135,35 +151,35 @@ export default function ProfileScreen() {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.userName}>{user?.firstName || user?.name || user?.username || 'Alan Syahlan'}</Text>
+                <View style={styles.userInfoContainer}>
+                  <Text style={styles.userName}>{user?.firstName || user?.name || user?.username || 'Alan Syahlan'}</Text>
+                  <View style={styles.premiumBadge}>
+                    <Text style={styles.premiumText}>Premium</Text>
+                  </View>
+                </View>
               </View>
               <TouchableOpacity onPress={handleEditProfile} style={styles.editButton}>
                 <MaterialIcons name="edit" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            {/* Paw Pattern */}
-            <View style={styles.patternOverlay}>
-              {[...Array(20)].map((_, i) => (
-                <Ionicons
-                  key={i}
-                  name="paw"
-                  size={30}
-                  color="rgba(255,255,255,0.1)"
-                  style={[
-                    styles.patternIcon,
-                    {
-                      top: Math.random() * 150,
-                      left: Math.random() * 400,
-                      transform: [{ rotate: `${Math.random() * 360}deg` }],
-                    },
-                  ]}
-                />
-              ))}
-            </View>
           </View>
 
           {/* Content */}
           <View style={styles.content}>
+            {/* Premium+ Banner */}
+            <TouchableOpacity style={styles.premiumBanner}>
+              <View style={styles.premiumBannerContent}>
+                <View style={styles.premiumIconContainer}>
+                  <MaterialIcons name="workspace-premium" size={24} color="#1565C0" />
+                </View>
+                <View style={styles.premiumTextContainer}>
+                  <Text style={styles.premiumBannerTitle}>Premium +</Text>
+                  <Text style={styles.premiumBannerSubtitle}>Dapatkan Extra Diskon</Text>
+                </View>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color={Colors.text.tertiary} />
+            </TouchableOpacity>
+
             {/* Riwayat Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Riwayat</Text>
@@ -203,20 +219,24 @@ export default function ProfileScreen() {
                       style={[
                         styles.menuItem,
                         itemIndex !== section.items.length - 1 && styles.menuItemBorder,
+                        item.isLogout && styles.logoutMenuItem,
                       ]}
                       onPress={item.onPress}
                     >
                       <View style={styles.menuItemLeft}>
-                        <MaterialIcons 
-                          name={item.icon as any} 
-                          size={24} 
-                          color={Colors.text.primary}
+                        <MaterialIcons
+                          name={item.icon as any}
+                          size={24}
+                          color={item.isLogout ? '#E53935' : Colors.text.primary}
                         />
-                        <Text style={styles.menuLabel}>{item.label}</Text>
+                        <Text style={[
+                          styles.menuLabel,
+                          item.isLogout && styles.logoutLabel,
+                        ]}>{item.label}</Text>
                       </View>
-                      <MaterialIcons 
-                        name="chevron-right" 
-                        size={24} 
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={24}
                         color={Colors.text.tertiary}
                       />
                     </TouchableOpacity>
@@ -239,11 +259,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+
+  // Header Section
   header: {
-    height: 80,
-    backgroundColor: '#FF6900',
-    position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: '#1565C0',
+    paddingBottom: Spacing.md,
   },
   headerContent: {
     flexDirection: 'row',
@@ -252,16 +272,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.sm,
-    zIndex: 2,
   },
   profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: Colors.background.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -269,98 +289,144 @@ const styles = StyleSheet.create({
     borderColor: Colors.text.white,
   },
   avatar: {
-    width: 45,
-    height: 45,
+    width: 40,
+    height: 40,
+  },
+  userInfoContainer: {
+    marginLeft: Spacing.md,
+    flex: 1,
   },
   userName: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.white,
-    marginLeft: Spacing.md,
+    marginBottom: 2,
+  },
+  premiumBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  premiumText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.medium,
+    color: Colors.text.white,
   },
   editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  patternOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: 'hidden',
-  },
-  patternIcon: {
-    position: 'absolute',
   },
   content: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+
+  // Premium+ Banner
+  premiumBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#E3F2FD',
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  premiumBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  premiumIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  premiumTextContainer: {
+    flex: 1,
+  },
+  premiumBannerTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.text.primary,
+    marginBottom: 2,
+  },
+  premiumBannerSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.regular,
+    color: Colors.text.secondary,
+  },
+
   section: {
-    marginBottom: 0,
+    marginBottom: Spacing.lg,
   },
   sectionTitle: {
     fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.medium,
-    color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.semibold,
+    color: '#1565C0',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.sm,
     paddingBottom: Spacing.sm,
     backgroundColor: '#FFFFFF',
   },
   riwayatCard: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 0,
-    borderRadius: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingBottom: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
   },
   riwayatContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.xl,
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   riwayatItem: {
     alignItems: 'center',
+    width: '20%',
   },
   riwayatIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 45,
+    height: 45,
+    borderRadius: 23,
     backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xs,
   },
   riwayatLabel: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: Colors.text.primary,
-    fontFamily: Typography.fontFamily.medium,
+    fontFamily: Typography.fontFamily.regular,
+    textAlign: 'center',
   },
   menuCard: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 0,
-    borderRadius: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
+    minHeight: 56,
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: '#F0F0F0',
   },
   menuItemLeft: {
     flexDirection: 'row',
@@ -370,6 +436,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: Colors.text.primary,
     marginLeft: Spacing.md,
+  },
+  logoutMenuItem: {
+    backgroundColor: '#FFEBEE',
+  },
+  logoutLabel: {
+    color: '#E53935',
   },
   bottomSpacing: {
     height: 80,
