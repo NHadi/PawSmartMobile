@@ -218,86 +218,89 @@ export default function EditProfileScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Avatar Section */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity 
-            style={styles.avatarContainer}
-            onPress={handleChangeAvatar}
-          >
-            <Image
-              source={require('../../../assets/mascot-happy.png')}
-              style={styles.avatar}
-              resizeMode="contain"
-            />
-            <View style={styles.editIconContainer}>
-              <MaterialIcons name="edit" size={16} color={Colors.text.white} />
+        {/* Blue Bordered Card */}
+        <View style={styles.formCard}>
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={handleChangeAvatar}
+            >
+              <Image
+                source={require('../../../assets/mascot-happy.png')}
+                style={styles.avatar}
+                resizeMode="contain"
+              />
+              <View style={styles.editIconContainer}>
+                <MaterialIcons name="camera-alt" size={18} color={Colors.text.white} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Form Section */}
+          <View style={styles.form}>
+            {/* Name Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nama</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Nama Lengkap"
+                placeholderTextColor={Colors.text.tertiary}
+              />
             </View>
+
+            {/* Username Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Username</Text>
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                placeholder="Username"
+                placeholderTextColor={Colors.text.tertiary}
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Phone Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nomor WhatsApp</Text>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={(text) => {
+                  // Only allow numbers
+                  const cleanedText = text.replace(/[^0-9]/g, '');
+                  setPhone(cleanedText);
+                }}
+                placeholder="08123456789"
+                placeholderTextColor={Colors.text.tertiary}
+                keyboardType="phone-pad"
+                maxLength={13}
+              />
+            </View>
+          </View>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={Colors.text.white} />
+            ) : (
+              <Text style={styles.saveButtonText}>Simpan</Text>
+            )}
           </TouchableOpacity>
         </View>
-
-        {/* Form Section */}
-        <View style={styles.form}>
-          {/* Name Input */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Nama Lengkap"
-              placeholderTextColor={Colors.text.tertiary}
-            />
-          </View>
-
-          {/* Username Input - Read Only */}
-          <View style={[styles.inputContainer, styles.readOnlyContainer]}>
-            <TextInput
-              style={[styles.input, styles.readOnlyInput]}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Username"
-              placeholderTextColor={Colors.text.tertiary}
-              autoCapitalize="none"
-              editable={false}
-            />
-            <Ionicons name="lock-closed-outline" size={18} color={Colors.text.tertiary} />
-          </View>
-
-          {/* Phone Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.phonePrefix}>+62</Text>
-            <TextInput
-              style={[styles.input, styles.phoneInput]}
-              value={phone ? phone.replace('+62', '').replace('62', '') : ''}
-              onChangeText={(text) => {
-                // Only allow numbers
-                const cleanedText = text.replace(/[^0-9]/g, '');
-                setPhone(cleanedText);
-              }}
-              placeholder="8123456789"
-              placeholderTextColor={Colors.text.tertiary}
-              keyboardType="phone-pad"
-              maxLength={13}
-            />
-          </View>
-        </View>
-
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={Colors.text.white} />
-          ) : (
-            <Text style={styles.saveButtonText}>Simpan</Text>
-          )}
-        </TouchableOpacity>
 
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
@@ -309,7 +312,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#F5F5F5',
   },
   header: {
     flexDirection: 'row',
@@ -340,81 +343,78 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Spacing.lg,
+  },
+
+  // Form Card
+  formCard: {
+    backgroundColor: Colors.background.primary,
+    paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing.lg,
   },
+
   avatarSection: {
     alignItems: 'center',
-    marginTop: Spacing.xl * 2,
     marginBottom: Spacing.xl,
   },
   avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: Colors.background.primary,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    elevation: 3,
-    shadowColor: Colors.shadow.main,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
   },
   avatar: {
-    width: 90,
-    height: 90,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   editIconContainer: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
+    bottom: 0,
+    right: 0,
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#1565C0',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: Colors.background.primary,
   },
+
   form: {
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    height: 56,
-    elevation: 1,
-    shadowColor: Colors.shadow.main,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+
+  inputGroup: {
+    marginBottom: Spacing.lg,
   },
+
+  label: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.regular,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.xs,
+  },
+
   input: {
-    flex: 1,
     fontSize: Typography.fontSize.base,
     color: Colors.text.primary,
-    height: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    paddingVertical: Spacing.sm,
+    fontFamily: Typography.fontFamily.regular,
   },
-  phonePrefix: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    marginRight: Spacing.sm,
-  },
-  phoneInput: {
-    flex: 1,
-  },
+
   saveButton: {
-    backgroundColor: Colors.primary.main,
+    backgroundColor: '#1565C0',
     borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.md + 2,
     alignItems: 'center',
-    marginTop: Spacing.xl * 2,
+    marginTop: Spacing.lg,
     height: 50,
     justifyContent: 'center',
   },
@@ -428,11 +428,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 100,
-  },
-  readOnlyContainer: {
-    backgroundColor: Colors.background.secondary,
-  },
-  readOnlyInput: {
-    color: Colors.text.secondary,
   },
 });
