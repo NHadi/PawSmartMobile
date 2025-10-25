@@ -18,9 +18,11 @@ import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList, PromoStackParamList } from '../../navigation/types';
 import { useCart } from '../../contexts/CartContext';
 import orderService, { CreateOrderData } from '../../services/order/orderService';
+import standaloneOrderService from '../../services/order/standaloneOrderService';
 import paymentSimulator from '../../services/payment/paymentSimulator';
 import authService from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
+import config from '../../config/environment';
 import PaymentMethodModal from '../../components/modals/PaymentMethodModal';
 import PaymentDetails from '../../components/payment/PaymentDetails';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
@@ -753,11 +755,11 @@ export default function CheckoutScreen() {
     const autoKirimItems = cartItemsWithOptions.filter(item => item.purchaseType === 'autokirim');
     const hasAutoKirim = autoKirimItems.length > 0;
     const isFullAutoKirim = autoKirimItems.length === cartItemsWithOptions.length;
-    
+
     // Prepare AutoKirim details for the order note
     let autoKirimNote = '';
     let orderTypePrefix = '';
-    
+
     if (hasAutoKirim) {
       // Add order type identifier at the beginning of the note
       if (isFullAutoKirim) {
@@ -765,7 +767,7 @@ export default function CheckoutScreen() {
       } else {
         orderTypePrefix = '[MIXED_ORDER]'; // Has both AutoKirim and regular items
       }
-      
+
       autoKirimNote = '\n\n=== AutoKirim Details ===\n';
       autoKirimItems.forEach(item => {
         if (item.autoKirimConfig) {
@@ -785,14 +787,16 @@ export default function CheckoutScreen() {
 
     // Prepare voucher details for the order note
     let voucherNote = '';
+    let voucherCode = '';
     if (selectedVouchers.length > 0) {
       voucherNote = '\n\n=== Voucher Applied ===\n';
       selectedVouchers.forEach(voucher => {
         voucherNote += `- ${voucher.title}: -Rp${voucher.discount.toLocaleString('id-ID')}\n`;
+        if (!voucherCode) voucherCode = voucher.id;
       });
     }
-    
-    // Create order in Odoo with order type identifier, voucher and shipping details
+
+    // Create order data
     const orderData: CreateOrderData = {
       partner_id: user.partner_id,
       order_line: orderLines,
@@ -801,11 +805,32 @@ export default function CheckoutScreen() {
       delivery_method_id: parseInt(selectedShipping.id) || 1,
     };
 
-    const order = await orderService.createOrder(orderData);
-    
-    // Set order status to waiting_payment
-    await orderService.updateOrderStatus(order.id, 'waiting_payment');
-    
+    // Use standalone API if enabled, otherwise use Odoo
+    let order;
+    if (config.USE_STANDALONE_API) {
+      console.log('[Checkout] Creating order via standalone API...');
+
+      // Add shipping and discount info for standalone API
+      const standaloneOrderData = {
+        ...orderData,
+        partner_id: user.id, // Use user.id for standalone API (not partner_id)
+        shipping_cost: selectedShipping.price,
+        discount_amount: calculateProductDiscount() + calculateVoucherDiscount() + calculateShippingDiscount(),
+        voucher_code: voucherCode || undefined,
+      };
+
+      order = await standaloneOrderService.createOrder(standaloneOrderData);
+
+      // Set order status to waiting_payment
+      await standaloneOrderService.updateOrderStatus(order.id, 'waiting_payment');
+    } else {
+      console.log('[Checkout] Creating order via Odoo API...');
+      order = await orderService.createOrder(orderData);
+
+      // Set order status to waiting_payment
+      await orderService.updateOrderStatus(order.id, 'waiting_payment');
+    }
+
     return order;
   };
 
