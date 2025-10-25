@@ -25,8 +25,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useProducts } from '../../hooks/useProducts';
 import { useDebounce } from '../../hooks/useDebounce';
 import { ActivityIndicator, RefreshControl } from 'react-native';
-import { Product as OdooProduct } from '../../services/product/productService';
-import odooComService from '../../services/odoocom/odooComService';
+import standaloneProductService from '../../services/product/standaloneProductService';
 
 type NavigationProp = StackNavigationProp<PromoStackParamList, 'PromoScreen'>;
 
@@ -243,89 +242,77 @@ export default function PromoScreen() {
     refetch,
   } = useInfiniteQuery({
     queryKey: ['promo-products', selectedSort, actualSearchQuery],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }) => {
       try {
-        const domain: any[] = [
-          ['sale_ok', '=', true],
-          ['qty_available', '>', 0],
-        ];
-        
+        // Prepare filter for standalone API
+        const filter: any = {
+          limit: 20,
+          offset: pageParam,
+          in_stock: true, // Only get products with stock
+        };
+
         // Add search filter if query exists
         if (actualSearchQuery) {
-          domain.push(['name', 'ilike', actualSearchQuery]);
+          filter.search = actualSearchQuery;
         }
-        
-        // Fetch products with discounts
-        const products = await odooComService.searchRead(
-          'product.product',
-          domain,
-          [
-            'id', 'name', 'list_price', 'standard_price', 'qty_available',
-            'categ_id', 'image_128', 'default_code', 'description_sale',
-            'barcode'
-          ],
-          {
-            limit: 20,
-            offset: pageParam,
-            order: selectedSort === 'Harga' ? 'list_price ASC' : 
-                   selectedSort === 'Terlaris' ? 'qty_available DESC' : 'name ASC',
-          }
-        );
-        
-        // Transform to match our Product interface
-        return products.map((p: any) => {
-          // For promo page, simulate discounts for demo purposes
-          // In real scenario, you would have a separate field for promotional prices
-          const hasPromo = Math.random() > 0.3; // 70% of products have promo
-          const discountPercent = hasPromo ? Math.floor(Math.random() * 40) + 5 : 0; // 5-45% discount
-          const originalPrice = p.list_price || 0;
-          const discountedPrice = hasPromo ? 
-            Math.round(originalPrice * (1 - discountPercent / 100)) : 
-            originalPrice;
-          
+
+        // Add sorting
+        if (selectedSort === 'Harga') {
+          filter.sort_by = 'price_asc';
+        } else if (selectedSort === 'Terlaris') {
+          filter.sort_by = 'rating'; // Use rating as proxy for popularity
+        } else {
+          filter.sort_by = 'name';
+        }
+
+        // Fetch products from standalone API
+        const products = await standaloneProductService.getProducts(filter);
+
+        // Filter for products with discounts and transform to match our Product interface
+        return products.filter(p => p.discount && p.discount > 0).map(p => {
           return {
             id: p.id.toString(),
             name: p.name || '',
-            price: discountedPrice,
-            originalPrice: originalPrice,
-            rating: 4.5 + Math.random() * 0.5,
-            sold: Math.floor(Math.random() * 1000),
-            image: p.image_128 ? `data:image/jpeg;base64,${p.image_128}` : null,
-            discount: discountPercent,
-            isRecommended: Math.random() > 0.7,
-            description_sale: p.description_sale,
-            category: p.categ_id?.[1] || 'General',
-            brand: '',
-            default_code: p.default_code,
-            barcode: p.barcode,
+            price: p.price || 0,
+            originalPrice: p.originalPrice || p.price || 0,
+            rating: p.rating || 4.5,
+            sold: p.sold || Math.floor(Math.random() * 1000),
+            image: p.image || null,
+            discount: p.discount || 0,
+            isRecommended: p.isRecommended || false,
+            description_sale: p.description_sale || '',
+            category: p.category || 'General',
+            brand: p.brand || '',
+            default_code: p.default_code || '',
+            barcode: p.barcode || '',
             qty_available: p.qty_available || 0,
           };
         });
       } catch (error) {
-        // Error fetching Odoo products
+        // Error fetching products from standalone API
         // Return empty array to trigger fallback products
         return [];
       }
     },
+    initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
       if (lastPage.length < 20) return undefined;
       return pages.length * 20;
     },
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
   
-  // Flatten pages and filter for products with discounts
-  const odooProducts = useMemo(() => {
+  // Flatten pages and get products with discounts (already filtered in query)
+  const apiProducts = useMemo(() => {
     const allProducts = data?.pages.flatMap(page => page) || [];
-    // Filter products that have discounts for promo page
-    return allProducts.filter(p => p.discount && p.discount > 0);
+    return allProducts; // Products are already filtered for discounts in the query
   }, [data]);
-  
+
   // Alias for compatibility
-  const productsWithDiscounts = odooProducts;
+  const productsWithDiscounts = apiProducts;
   
-  // Use Odoo products if available, otherwise use fallback
+  // Use API products if available, otherwise use fallback
   const products = productsWithDiscounts.length > 0 ? productsWithDiscounts : fallbackProducts;
   
   // Extract dynamic categories and brands from products
@@ -533,7 +520,7 @@ export default function PromoScreen() {
         // Search in multiple fields
         const searchableText = [
           product.name || '',
-          product.description || '',
+          product.description || product.description_sale || '',
           product.description_sale || '',
           product.category || '',
           product.default_code || '',
@@ -549,7 +536,7 @@ export default function PromoScreen() {
       filtered = filtered.filter(product => {
         const productText = [
           product.name || '',
-          product.description || '',
+          product.description || product.description_sale || '',
           product.description_sale || '',
           product.category || '',
           product.brand || '',
@@ -628,12 +615,12 @@ export default function PromoScreen() {
       filtered = filtered.filter(product => {
         // Check brand field first, then fallback to name
         if (product.brand) {
-          return selectedBrands.some(brand => 
-            product.brand.toLowerCase() === brand.toLowerCase()
+          return selectedBrands.some(brand =>
+            product.brand!.toLowerCase() === brand.toLowerCase()
           );
         } else {
           const productName = product.name || '';
-          return selectedBrands.some(brand => 
+          return selectedBrands.some(brand =>
             productName.toLowerCase().includes(brand.toLowerCase())
           );
         }
@@ -1058,7 +1045,7 @@ export default function PromoScreen() {
                     const count = products.filter(p => {
                       const productText = [
                         p.name || '',
-                        p.description || '',
+                        p.description || p.description_sale || '',
                         p.description_sale || '',
                         p.category || '',
                         p.brand || '',
