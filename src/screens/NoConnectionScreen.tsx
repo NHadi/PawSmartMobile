@@ -78,7 +78,7 @@ export default function NoConnectionScreen({ onRetry }: NoConnectionScreenProps)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: 16,
     fontFamily: Typography.fontFamily.semibold,
-    color: '#16A6D9',
+    color: '#1C49C2',
     letterSpacing: 0.5,
   },
 });

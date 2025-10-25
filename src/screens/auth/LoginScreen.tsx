@@ -147,7 +147,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
           <View style={styles.form}>
             {/* Username Input */}
             <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#16A6D9" style={styles.inputIcon} />
+              <Ionicons name="person-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 value={username}
@@ -160,7 +160,7 @@ export default function LoginScreen({ navigation }: AuthStackScreenProps<'Login'
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#16A6D9" style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 value={password}

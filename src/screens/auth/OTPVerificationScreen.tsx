@@ -338,7 +338,7 @@ export default function OTPVerificationScreen() {
                 disabled={isResending}
               >
                 {isResending ? (
-                  <ActivityIndicator size="small" color="#16A6D9" />
+                  <ActivityIndicator size="small" color="#1C49C2" />
                 ) : (
                   <Text style={styles.resendLink}>Kirim ulang</Text>
                 )}
@@ -558,14 +558,14 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   submitButton: {
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
     borderRadius: 25,
     paddingVertical: 15,
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 20,
     elevation: 2,
-    shadowColor: '#16A6D9',
+    shadowColor: '#1C49C2',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   },
   resendLink: {
     fontSize: 14,
-    color: '#16A6D9',
+    color: '#1C49C2',
     fontFamily: Typography.fontFamily.semibold,
     textDecorationLine: 'underline',
   },
@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
   bottomSheetTitle: {
     fontSize: 20,
     fontFamily: Typography.fontFamily.bold,
-    color: '#16A6D9',
+    color: '#1C49C2',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   bottomSheetButton: {
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
     borderRadius: 25,
     paddingVertical: 15,
     paddingHorizontal: 40,

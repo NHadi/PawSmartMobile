@@ -1229,8 +1229,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyActionButtonPrimary: {
-    backgroundColor: '#16A6D9',
-    borderColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
+    borderColor: '#1C49C2',
   },
   emptyActionButtonText: {
     fontSize: Typography.fontSize.sm,

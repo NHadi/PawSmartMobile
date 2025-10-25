@@ -160,7 +160,7 @@ export default function ResetPasswordScreen({ navigation, route }: AuthStackScre
               {/* Password Input */}
               <View style={styles.inputContainer}>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
+                  <Ionicons name="lock-closed-outline" size={24} color="#1C49C2" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={password}
@@ -190,7 +190,7 @@ export default function ResetPasswordScreen({ navigation, route }: AuthStackScre
               {/* Confirm Password Input */}
               <View style={styles.inputContainer}>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
+                  <Ionicons name="lock-closed-outline" size={24} color="#1C49C2" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     value={confirmPassword}
@@ -277,7 +277,7 @@ export default function ResetPasswordScreen({ navigation, route }: AuthStackScre
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
   },
   backgroundImage: {
     flex: 1,
@@ -390,13 +390,13 @@ backButtonText: {
     marginLeft: 4,
   },
   submitButton: {
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 20,
     elevation: 2,
-    shadowColor: '#16A6D9',
+    shadowColor: '#1C49C2',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -426,7 +426,7 @@ backButtonText: {
   },
   backToLoginLink: {
     fontSize: 14,
-    color: '#16A6D9',
+    color: '#1C49C2',
     fontFamily: Typography.fontFamily.semibold,
     textDecorationLine: 'underline',
   },

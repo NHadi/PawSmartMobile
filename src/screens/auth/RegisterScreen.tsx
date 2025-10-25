@@ -241,7 +241,7 @@ export default function RegisterScreen() {
 
           <View style={styles.header}>
             <Image
-              source={require('../../../assets/Happy Maskot.png')}
+              source={require('../../../assets/splash-icon.png')}
               style={styles.mascot}
               resizeMode="contain"
             />
@@ -254,161 +254,112 @@ export default function RegisterScreen() {
           style={styles.formContainer}
         >
           <View style={styles.formCard}>
-            <ScrollView 
-              showsVerticalScrollIndicator={false} 
-              bounces={false}
-              contentContainerStyle={styles.formScrollContent}
-            >
-              {/* Nama Lengkap */}
+              {/* Nama */}
               <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="person-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nama Lengkap"
-                    placeholderTextColor="#999999"
-                    value={formData.name}
-                    onChangeText={(text) => {
-                      setFormData({ ...formData, name: text });
-                      if (errors.name) setErrors({ ...errors, name: '' });
-                    }}
-                    autoCapitalize="words"
-                  />
-                </View>
-                {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
+                <Ionicons name="person-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nama"
+                  placeholderTextColor="#CCCCCC"
+                  value={formData.name}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, name: text });
+                    if (errors.name) setErrors({ ...errors, name: '' });
+                  }}
+                  autoCapitalize="words"
+                />
               </View>
+              {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
               {/* Username */}
               <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="at-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Username"
-                    placeholderTextColor="#999999"
-                    value={formData.username}
-                    onChangeText={async (text) => {
-                      setFormData({ ...formData, username: text });
-                      if (errors.username) setErrors({ ...errors, username: '' });
-                      
-                      // Check username availability after user stops typing
-                      if (text.length >= 3) {
-                        setIsCheckingUsername(true);
-                        setUsernameAvailable(null);
-                        
-                        // Debounce the check
-                        setTimeout(async () => {
-                          try {
-                            const available = await standaloneAuthService.checkUsernameAvailability(text);
-                            setUsernameAvailable(available);
-                          } catch (error) {
-                            } finally {
-                            setIsCheckingUsername(false);
-                          }
-                        }, 500);
-                      } else {
-                        setUsernameAvailable(null);
-                      }
-                    }}
-                    autoCapitalize="none"
-                  />
-                  {isCheckingUsername && (
-                    <ActivityIndicator size="small" color="#16A6D9" style={styles.checkingIcon} />
-                  )}
-                  {!isCheckingUsername && usernameAvailable === true && formData.username.length >= 3 && (
-                    <Ionicons name="checkmark-circle" size={20} color={Colors.success.main} style={styles.checkingIcon} />
-                  )}
-                  {!isCheckingUsername && usernameAvailable === false && (
-                    <Ionicons name="close-circle" size={20} color={Colors.error.main} style={styles.checkingIcon} />
-                  )}
-                </View>
-                {errors.username ? (
-                  <Text style={styles.errorText}>{errors.username}</Text>
-                ) : !isCheckingUsername && usernameAvailable === false ? (
-                  <Text style={styles.errorText}>Username sudah digunakan</Text>
-                ) : !isCheckingUsername && usernameAvailable === true && formData.username.length >= 3 ? (
-                  <Text style={styles.successText}>Username tersedia</Text>
-                ) : null}
+                <Ionicons name="person-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Username"
+                  placeholderTextColor="#CCCCCC"
+                  value={formData.username}
+                  onChangeText={async (text) => {
+                    setFormData({ ...formData, username: text });
+                    if (errors.username) setErrors({ ...errors, username: '' });
+                  }}
+                  autoCapitalize="none"
+                />
               </View>
+              {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
 
               {/* No WhatsApp */}
               <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="call-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="No WhatsApp"
-                    placeholderTextColor="#999999"
-                    value={formData.phone}
-                    onChangeText={(text) => {
-                      setFormData({ ...formData, phone: text });
-                      if (errors.phone) setErrors({ ...errors, phone: '' });
-                    }}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-                {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+                <Ionicons name="call-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="No WhatsApp"
+                  placeholderTextColor="#CCCCCC"
+                  value={formData.phone}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, phone: text });
+                    if (errors.phone) setErrors({ ...errors, phone: '' });
+                  }}
+                  keyboardType="phone-pad"
+                />
               </View>
+              {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
 
               {/* Password */}
               <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#999999"
-                    value={formData.password}
-                    onChangeText={(text) => {
-                      setFormData({ ...formData, password: text });
-                      if (errors.password) setErrors({ ...errors, password: '' });
-                    }}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
+                <Ionicons name="lock-closed-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#CCCCCC"
+                  value={formData.password}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, password: text });
+                    if (errors.password) setErrors({ ...errors, password: '' });
+                  }}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#999999"
                   />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeIcon}
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={20}
-                      color="#999999"
-                    />
-                  </TouchableOpacity>
-                </View>
-                {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+                </TouchableOpacity>
               </View>
+              {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
 
               {/* Konfirmasi Password */}
               <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={24} color="#16A6D9" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Konfirmasi Password"
-                    placeholderTextColor="#999999"
-                    value={formData.confirmPassword}
-                    onChangeText={(text) => {
-                      setFormData({ ...formData, confirmPassword: text });
-                      if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
-                    }}
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize="none"
+                <Ionicons name="lock-closed-outline" size={20} color="#1C49C2" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Konfirmasi Password"
+                  placeholderTextColor="#CCCCCC"
+                  value={formData.confirmPassword}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, confirmPassword: text });
+                    if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+                  }}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#999999"
                   />
-                  <TouchableOpacity
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={styles.eyeIcon}
-                  >
-                    <Ionicons
-                      name={showConfirmPassword ? 'eye-off' : 'eye'}
-                      size={20}
-                      color="#999999"
-                    />
-                  </TouchableOpacity>
-                </View>
-                {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
+                </TouchableOpacity>
               </View>
+              {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
 
               {/* Register Button */}
               <TouchableOpacity
@@ -434,57 +385,51 @@ export default function RegisterScreen() {
               {/* Divider */}
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
+                <Text style={styles.dividerText}>Or</Text>
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Social Login Buttons */}
+              {/* Social Login Icons */}
               <View style={styles.socialButtons}>
                 {/* Google Sign In */}
-                <TouchableOpacity 
-                  style={[styles.socialButton, isLoading && styles.buttonDisabled]} 
+                <TouchableOpacity
+                  style={[styles.socialIconButton, isLoading && styles.buttonDisabled]}
                   onPress={handleGoogleSignIn}
                   disabled={isLoading}
                 >
-                  <Image 
-                    source={require('../../../assets/google.png')} 
-                    style={styles.socialIcon}
+                  <Image
+                    source={require('../../../assets/google.png')}
+                    style={styles.socialIconImage}
                     resizeMode="contain"
                   />
-                  <Text style={styles.socialButtonText}>Daftar dengan Google</Text>
                 </TouchableOpacity>
 
                 {/* Facebook Sign In */}
-                <TouchableOpacity 
-                  style={[styles.socialButton, isLoading && styles.buttonDisabled]} 
+                <TouchableOpacity
+                  style={[styles.socialIconButton, isLoading && styles.buttonDisabled]}
                   onPress={handleFacebookSignIn}
                   disabled={isLoading}
                 >
-                  <Image 
-                    source={require('../../../assets/facebook.png')} 
-                    style={styles.socialIcon}
+                  <Image
+                    source={require('../../../assets/facebook.png')}
+                    style={styles.socialIconImage}
                     resizeMode="contain"
                   />
-                  <Text style={styles.socialButtonText}>Daftar dengan Facebook</Text>
                 </TouchableOpacity>
 
-                {/* Apple Sign In - Only show on iOS */}
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity 
-                    style={[styles.socialButton, isLoading && styles.buttonDisabled]} 
-                    onPress={handleAppleSignIn}
-                    disabled={isLoading}
-                  >
-                    <Image 
-                      source={require('../../../assets/apple.png')} 
-                      style={styles.socialIcon}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.socialButtonText}>Daftar dengan Apple</Text>
-                  </TouchableOpacity>
-                )}
+                {/* Apple Sign In */}
+                <TouchableOpacity
+                  style={[styles.socialIconButton, isLoading && styles.buttonDisabled]}
+                  onPress={handleAppleSignIn}
+                  disabled={isLoading}
+                >
+                  <Image
+                    source={require('../../../assets/apple.png')}
+                    style={styles.socialIconImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               </View>
-            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </ImageBackground>
@@ -495,7 +440,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
   },
   backgroundImage: {
     flex: 1,
@@ -526,7 +471,7 @@ backButtonText: {
 },
   header: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   title: {
     fontSize: 32,
@@ -536,9 +481,9 @@ backButtonText: {
     letterSpacing: 0.5,
   },
   mascot: {
-    width: 240,
-    height: 240,
-    marginBottom: -100,
+    width: 140,
+    height: 140,
+    marginBottom: -60,
     zIndex: 1,
   },
   formContainer: {
@@ -546,13 +491,15 @@ backButtonText: {
     bottom: 0,
     left: 0,
     right: 0,
-    top: '36%',
+    top: '26%',
   },
   formCard: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     flex: 1,
+    paddingTop: 20,
+    paddingBottom: 16,
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: {
@@ -563,61 +510,46 @@ backButtonText: {
     shadowRadius: 8,
     zIndex: 10,
   },
-  formScrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 40,
-  },
   inputContainer: {
-    marginBottom: 12,
-  },
-  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 5,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    marginBottom: 16,
+    paddingBottom: 8,
+    paddingHorizontal: 24,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 50,
-    paddingHorizontal: 10,
     fontSize: 15,
-    color: '#333333',
+    color: '#000000',
+    paddingVertical: 8,
+    fontFamily: Typography.fontFamily.regular,
   },
-  inputIcon: {
-    marginLeft: 12,
-  },
-  eyeIcon: {
-    padding: 12,
+  eyeButton: {
+    padding: 4,
+    marginLeft: 8,
   },
   errorText: {
     color: '#FF4444',
     fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  successText: {
-    color: '#4CAF50',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  checkingIcon: {
-    marginRight: 8,
+    marginTop: -16,
+    marginBottom: 12,
+    marginLeft: 56,
   },
   registerButton: {
-    backgroundColor: '#16A6D9',
+    backgroundColor: '#1C49C2',
     borderRadius: 12,
-    paddingVertical: 15,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 15,
+    marginTop: 12,
+    marginBottom: 8,
+    marginHorizontal: 24,
     elevation: 2,
-    shadowColor: '#16A6D9',
+    shadowColor: '#1C49C2',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -639,6 +571,8 @@ backButtonText: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 4,
+    paddingHorizontal: 24,
   },
   loginText: {
     fontSize: 14,
@@ -646,14 +580,15 @@ backButtonText: {
   },
   loginLink: {
     fontSize: 14,
-    color: '#16A6D9',
+    color: '#1C49C2',
     fontFamily: Typography.fontFamily.semibold,
     textDecorationLine: 'underline',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 12,
+    paddingHorizontal: 24,
   },
   dividerLine: {
     flex: 1,
@@ -662,40 +597,37 @@ backButtonText: {
   },
   dividerText: {
     marginHorizontal: 10,
-    fontSize: 12,
+    fontSize: 14,
     color: '#999999',
-    fontStyle: 'italic',
+    fontFamily: Typography.fontFamily.regular,
   },
   socialButtons: {
-    gap: 10,
-  },
-  socialButton: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+    paddingBottom: 16,
+  },
+  socialIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 13,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    marginBottom: 8,
-    elevation: 1,
+    borderColor: '#E0E0E0',
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  socialIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 8,
-  },
-  socialButtonText: {
-    fontSize: 14,
-    color: '#4A4A4A',
-    fontFamily: Typography.fontFamily.medium,
+  socialIconImage: {
+    width: 24,
+    height: 24,
   },
 });
