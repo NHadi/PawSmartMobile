@@ -48,10 +48,45 @@ class StandaloneOrderService {
 
       const response = await standaloneClient.get('/orders', { params });
 
-      console.log('[StandaloneOrderService] Fetched orders:', response?.data?.length || 0);
+      console.log('[StandaloneOrderService] Raw response type:', typeof response);
+      console.log('[StandaloneOrderService] Response structure:', {
+        isArray: Array.isArray(response),
+        hasSuccess: !!response?.success,
+        hasData: !!response?.data,
+        dataIsArray: Array.isArray(response?.data)
+      });
 
-      // Handle both direct array response and success wrapper
-      const orders = Array.isArray(response) ? response : (response.success ? response.data : []);
+      // Backend may return: array directly, {success, data: array}, or {data: array}
+      let orders;
+      if (response?.success && response?.data) {
+        // Format: {success: true, data: [...]}
+        orders = Array.isArray(response.data) ? response.data : [];
+      } else if (response?.data && !response?.success) {
+        // Format: {data: [...]}
+        orders = Array.isArray(response.data) ? response.data : [];
+      } else if (Array.isArray(response)) {
+        // Direct array
+        orders = response;
+      } else {
+        orders = [];
+      }
+
+      console.log('[StandaloneOrderService] Fetched orders:', orders.length);
+
+      // Log order statuses for debugging
+      if (orders.length > 0) {
+        console.log('[StandaloneOrderService] Sample order statuses:',
+          orders.slice(0, 3).map((o: any) => ({
+            id: o.id,
+            state: o.state,
+            custom_status: o.custom_status,
+            name: o.name,
+            notes: o.notes?.substring(0, 100),
+            xendit_payment_status: o.xendit_payment_status
+          }))
+        );
+      }
+
       return orders.map((order: any) => this.transformOrder(order));
     } catch (error: any) {
       console.error('[StandaloneOrderService] Failed to fetch orders:', error);
@@ -64,17 +99,58 @@ class StandaloneOrderService {
    */
   async getOrderById(orderId: string | number): Promise<Order> {
     try {
-      console.log('[StandaloneOrderService] Fetching order by ID:', orderId);
+      console.log('[StandaloneOrderService] Fetching order by ID:', orderId, 'Type:', typeof orderId);
+      console.log('[StandaloneOrderService] API URL will be: /orders/' + orderId);
 
       const response = await standaloneClient.get(`/orders/${orderId}`);
 
-      console.log('[StandaloneOrderService] Order fetched successfully');
+      console.log('[StandaloneOrderService] Raw API response:', JSON.stringify(response).substring(0, 500));
+      console.log('[StandaloneOrderService] Response type:', typeof response);
+      console.log('[StandaloneOrderService] Response structure:', {
+        hasSuccess: !!response?.success,
+        hasData: !!response?.data,
+        hasOrder: !!response?.data?.order,
+        hasOrderLines: !!response?.data?.order_lines,
+        orderHasOrderLine: !!response?.data?.order?.order_line,
+        orderHasOrderLines: !!response?.data?.order?.order_lines
+      });
 
-      // Handle success wrapper
-      const order = response.success ? response.data : response;
+      // Backend returns nested structure: {success, data: {order, order_lines}}
+      let order;
+      if (response?.success && response?.data?.order) {
+        // Format: {success: true, data: {order: {...}, order_lines: [...]}}
+        order = response.data.order;
+        // Attach order_lines if they exist separately
+        if (response.data.order_lines) {
+          order.order_line = response.data.order_lines;
+        }
+        // Check if order_line is already in the order object
+        if (!order.order_line && order.order_lines) {
+          order.order_line = order.order_lines;
+        }
+      } else if (response?.data) {
+        // Fallback: {data: {...}} or direct order object in data
+        order = response.data;
+      } else if (response?.order_line || response?.id) {
+        // Direct response (has order properties)
+        order = response;
+      } else {
+        console.error('[StandaloneOrderService] Unexpected response format:', response);
+        throw new Error('Invalid response format from backend');
+      }
+
+      console.log('[StandaloneOrderService] Order extracted:', {
+        id: order?.id,
+        name: order?.name,
+        state: order?.state,
+        hasOrderLines: !!order?.order_line,
+        orderLineCount: order?.order_line?.length
+      });
+
       return this.transformOrder(order);
     } catch (error: any) {
       console.error('[StandaloneOrderService] Failed to fetch order:', error);
+      console.error('[StandaloneOrderService] Error details:', error.response?.data);
       throw new Error(error.response?.data?.message || error.message || 'Failed to fetch order');
     }
   }
@@ -448,18 +524,74 @@ class StandaloneOrderService {
    * Transform API order data to match app format
    */
   private transformOrder(apiOrder: any): Order {
-    // Extract custom status from note field if present
+    // Extract custom status - prioritize custom_status field from REST API
     let actualState: OrderStatus = apiOrder.state as OrderStatus;
     let statusText = '';
 
-    if (apiOrder.note || apiOrder.notes) {
+    console.log('[StandaloneOrderService] Transforming order:', {
+      id: apiOrder.id,
+      rawState: apiOrder.state,
+      custom_status: apiOrder.custom_status,
+      xendit_payment_status: apiOrder.xendit_payment_status,
+      hasNotes: !!apiOrder.notes
+    });
+
+    // First check for custom_status field from REST API (preferred)
+    if (apiOrder.custom_status) {
+      actualState = apiOrder.custom_status as OrderStatus;
+      // Generate status text from custom_status
+      statusText = apiOrder.custom_status.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+    }
+    // Fallback to note field parsing (for legacy orders with [STATUS] in notes)
+    else if (apiOrder.note || apiOrder.notes) {
       const note = apiOrder.note || apiOrder.notes;
       const statusMatch = note.match(/^\[([A-Z_]+)\]/);
       if (statusMatch) {
         const customStatus = statusMatch[1].toLowerCase().replace(/_/g, '_');
-        actualState = customStatus as OrderStatus;
-        statusText = customStatus.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        // Only use note status if it's a valid order status (not REGULAR_ORDER, AUTOKIRIM_ORDER, etc.)
+        const validStatuses = ['waiting_payment', 'payment_confirmed', 'admin_review', 'approved',
+                              'processing', 'shipped', 'delivered', 'cancelled', 'pending'];
+        if (validStatuses.includes(customStatus)) {
+          actualState = customStatus as OrderStatus;
+          statusText = customStatus.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        }
       }
+    }
+
+    // If state is still not a valid order status, check payment status to determine state
+    if (apiOrder.state === 'regular_order' || apiOrder.state === 'autokirim_order') {
+      // Check Xendit payment status to determine actual order state
+      const paymentStatus = apiOrder.xendit_payment_status;
+
+      if (paymentStatus === 'PAID' ||
+          paymentStatus === 'SETTLED' ||
+          paymentStatus === 'COMPLETED' ||
+          paymentStatus === 'SUCCEEDED') {
+        // Payment confirmed - user can track
+        actualState = 'payment_confirmed';
+        statusText = 'Pembayaran Dikonfirmasi';
+      } else if (paymentStatus === 'PENDING' ||
+                 paymentStatus === 'AWAITING_PAYMENT') {
+        // Payment pending - user needs to pay
+        actualState = 'waiting_payment';
+        statusText = 'Menunggu Pembayaran';
+      } else if (!paymentStatus || paymentStatus === 'CREATED') {
+        // No payment yet - default to waiting payment
+        actualState = 'waiting_payment';
+        statusText = 'Menunggu Pembayaran';
+      } else {
+        // Unknown payment status - default to waiting payment for safety
+        console.warn('[StandaloneOrderService] Unknown payment status:', paymentStatus);
+        actualState = 'waiting_payment';
+        statusText = 'Menunggu Pembayaran';
+      }
+
+      console.log('[StandaloneOrderService] Resolved state for order', apiOrder.id, ':', {
+        from: apiOrder.state,
+        to: actualState,
+        paymentStatus,
+        statusText
+      });
     }
 
     // Default status text if not set

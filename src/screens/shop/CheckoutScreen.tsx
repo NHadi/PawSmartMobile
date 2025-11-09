@@ -140,6 +140,7 @@ export default function CheckoutScreen() {
   const [showAutoKirimModal, setShowAutoKirimModal] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [cartItemsWithOptions, setCartItemsWithOptions] = useState<CartItem[]>([]);
+  const [existingOrder, setExistingOrder] = useState<any>(null);
 
   const calculateSubtotal = () => {
     // Calculate based on purchase type and auto-kirim configurations
@@ -337,6 +338,80 @@ export default function CheckoutScreen() {
     fetchUserAndAddresses();
   }, []);
 
+  // Function to fetch existing order details from API
+  const fetchExistingOrder = async (orderId: string) => {
+    try {
+      console.log('[CheckoutScreen] Fetching existing order:', orderId, 'Type:', typeof orderId);
+      console.log('[CheckoutScreen] USE_STANDALONE_API:', config.USE_STANDALONE_API);
+      showLoading();
+
+      // Fetch order details from API
+      const order = config.USE_STANDALONE_API
+        ? await standaloneOrderService.getOrderById(orderId)
+        : await orderService.getOrderById(orderId);
+
+      console.log('[CheckoutScreen] Loaded existing order:', order);
+
+      // Store the order
+      setExistingOrder(order);
+
+      // Transform order items to CartItem format for display
+      const orderItems: CartItem[] = (order.order_line || order.items || []).map((line: any) => {
+        // Handle image - check if it's base64 or already an object
+        let itemImage: any;
+        if (line.image_128) {
+          // Base64 image from API
+          itemImage = { uri: `data:image/jpeg;base64,${line.image_128}` };
+        } else if (line.image) {
+          // Already formatted image
+          if (typeof line.image === 'string' && line.image.startsWith('data:')) {
+            itemImage = { uri: line.image };
+          } else if (typeof line.image === 'object' && line.image.uri) {
+            itemImage = line.image;
+          } else {
+            itemImage = line.image;
+          }
+        } else {
+          // Fallback placeholder if no image
+          itemImage = require('../../../assets/product-placeholder.jpg');
+        }
+
+        return {
+          id: line.id?.toString() || line.product_id?.[0]?.toString() || `item_${Math.random()}`,
+          name: line.product_name || line.name || line.product_id?.[1] || 'Product',
+          price: line.price_unit || line.price || 0,
+          originalPrice: line.price_unit || line.price || 0,
+          quantity: line.product_uom_qty || line.quantity || 0,
+          image: itemImage,
+          weight: '500gr',
+          discount: line.discount || 0,
+          seller: 'PawSmart',
+          purchaseType: 'sekali' as const,
+        };
+      });
+
+      console.log('[CheckoutScreen] Transformed order items:', orderItems.length, 'items');
+
+      // Populate the cart items for display
+      setCartItemsWithOptions(orderItems);
+
+      hideLoading();
+    } catch (error) {
+      console.error('[CheckoutScreen] Failed to fetch existing order:', error);
+      hideLoading();
+      Alert.alert(
+        'Error',
+        'Gagal memuat data pesanan. Silakan coba lagi.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
+    }
+  };
+
   // Handle existing order from activity screen and address/voucher/shipping selection
   useEffect(() => {
     const params = route.params as any;
@@ -354,14 +429,15 @@ export default function CheckoutScreen() {
       setSelectedPayment(params.selectedPayment);
     }
     if (params?.orderId && params?.orderName) {
-      // Continuing with existing order
+      // Continuing with existing order from Activity screen
       setOrderId(params.orderId);
       setOrderName(params.orderName);
-      
-      // Show payment modal automatically
-      setTimeout(() => {
-        setShowPaymentModal(true);
-      }, 1000);
+
+      // Fetch existing order details to populate the checkout screen
+      fetchExistingOrder(params.orderId);
+
+      // Don't auto-show payment modal - let user review order first
+      // User will click "Bayar" button when ready
     }
   }, [route.params]);
 
@@ -430,6 +506,13 @@ export default function CheckoutScreen() {
   };
 
   const calculateTotal = () => {
+    // If continuing existing order, use the order's total amount
+    if (existingOrder && orderId) {
+      console.log('[CheckoutScreen] Using existing order total:', existingOrder.amount_total);
+      return existingOrder.amount_total || 0;
+    }
+
+    // Otherwise calculate from cart items (new order flow)
     const subtotal = calculateSubtotal();
     const shipping = selectedShipping.price;
     const insurance = hasInsurance ? 2500 : 0;
@@ -717,8 +800,19 @@ export default function CheckoutScreen() {
 
     // Create order and navigate to payment screen
     try {
+      // Check if we're continuing an existing order (from Activity screen)
+      if (orderId && orderName) {
+        // Skip order creation, go straight to payment
+        console.log('[CheckoutScreen] Continuing existing order:', orderId, orderName);
+        showLoading('Memproses pembayaran...');
+        await createPayment(selectedPayment, orderId, orderName);
+        hideLoading();
+        return;
+      }
+
+      // Create new order (from Cart)
       showLoading('Membuat pesanan...');
-      
+
       // Get current user
       if (!user) {
         hideLoading();
@@ -728,13 +822,13 @@ export default function CheckoutScreen() {
 
       // Create new order
       const order = await createNewOrder();
-      
+
       // Store order info
       setOrderId(order.id);
       setOrderName(order.name);
-      
+
       hideLoading();
-      
+
       // Now create payment with the selected method
       await createPayment(selectedPayment, order.id, order.name);
     } catch (error) {

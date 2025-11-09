@@ -10,6 +10,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   SectionList,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -114,6 +116,35 @@ const getImageUri = (item: any): string | null => {
   }
 
   return null;
+};
+
+// Helper function to copy transaction ID to clipboard
+const copyTransactionId = async (transactionId: string) => {
+  try {
+    // For now, we'll show the transaction ID in an alert
+    // To enable clipboard copy, install: expo install expo-clipboard
+    // Then uncomment the clipboard code
+
+    // import * as Clipboard from 'expo-clipboard';
+    // await Clipboard.setStringAsync(transactionId);
+
+    Alert.alert(
+      'ID Transaksi',
+      transactionId,
+      [
+        {
+          text: 'Tutup',
+          style: 'cancel'
+        }
+      ]
+    );
+
+    // Note: Clipboard functionality requires expo-clipboard package
+    // Run: npx expo install expo-clipboard
+  } catch (error) {
+    console.error('Failed to copy transaction ID:', error);
+    Alert.alert('Gagal', 'Gagal menyalin ID transaksi', [{ text: 'OK' }]);
+  }
 };
 
 export default function ActivityScreen() {
@@ -360,18 +391,36 @@ export default function ActivityScreen() {
   const renderOrderItem = (order: any) => {
     const needsPayment = (order.state === 'draft' ||
                         order.state === 'waiting_payment' ||
+                        order.state === 'pending' ||
                         (order.note && order.note.includes('[WAITING_PAYMENT]'))) &&
                         order.state !== 'cancel' &&
                         order.state !== 'cancelled' &&
                         order.state !== 'sale' &&
+                        order.state !== 'done' &&
                         !order.note?.includes('[PAYMENT_CONFIRMED]');
 
     const canTrack = order.state === 'sale' ||
                      order.state === 'shipped' ||
                      order.state === 'processing' ||
+                     order.state === 'payment_confirmed' ||
+                     order.state === 'admin_review' ||
+                     order.state === 'approved' ||
+                     order.state === 'delivered' ||
                      order.note?.includes('[PAYMENT_CONFIRMED]') ||
                      order.statusText === 'Sedang Diproses' ||
                      order.statusText === 'Dikirim';
+
+    // Debug logging
+    if (__DEV__) {
+      console.log('[ActivityScreen] Order action check:', {
+        orderId: order.id,
+        state: order.state,
+        statusText: order.statusText,
+        needsPayment,
+        canTrack,
+        note: order.note?.substring(0, 50)
+      });
+    }
 
     // Check if this is an AutoKirim order
     const isAutoKirim = order.note && (
@@ -462,6 +511,20 @@ export default function ActivityScreen() {
 
               {/* Summary Information */}
               <View style={styles.orderSummary}>
+                {/* Transaction ID Row */}
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>No. Transaksi</Text>
+                  <View style={styles.transactionIdContainer}>
+                    <Text style={styles.summaryValue}>{order.transactionId || order.name || order.id}</Text>
+                    <TouchableOpacity
+                      onPress={() => copyTransactionId(order.transactionId || order.name || String(order.id))}
+                      style={styles.copyButton}
+                    >
+                      <MaterialIcons name="content-copy" size={16} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Jumlah SKU Produk</Text>
                   <Text style={styles.summaryValue}>{order.items?.length || 0}</Text>
@@ -537,9 +600,16 @@ export default function ActivityScreen() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => {
+                // Navigate to Checkout screen for existing order (same flow as cart checkout)
+                console.log('[ActivityScreen] Navigating to checkout with order:', {
+                  orderId: order.id,
+                  orderName: order.name,
+                  transactionId: order.transactionId,
+                  fullOrder: order
+                });
                 navigation.navigate('Checkout', {
                   orderId: order.id.toString(),
-                  orderName: order.name
+                  orderName: order.name || order.transactionId || `Order ${order.id}`,
                 });
               }}
             >
@@ -1046,6 +1116,15 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.primary,
+  },
+  transactionIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  copyButton: {
+    padding: Spacing.xs,
+    marginLeft: Spacing.xs,
   },
   orderNumber: {
     fontSize: Typography.fontSize.sm,
