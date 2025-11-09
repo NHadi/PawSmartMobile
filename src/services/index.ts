@@ -2,13 +2,15 @@
 export { default as apiClient } from './api/apiClient';
 export { default as authService } from './auth/unifiedAuthService';
 export { default as productService } from './product/unifiedProductService';
-export { default as orderService } from './order/orderService';
+export { default as orderService } from './order/unifiedOrderService';
 export { default as promotionService } from './promotion/promotionService';
 
 // Export legacy services for direct access if needed
 export { default as legacyAuthService } from './auth/authService';
 export { default as legacyProductService } from './product/productService';
+export { default as legacyOrderService } from './order/orderService';
 export { default as standaloneProductService } from './product/standaloneProductService';
+export { default as standaloneOrderService } from './order/standaloneOrderService';
 export { default as standaloneAuthService } from './auth/standaloneAuthService';
 
 // Export types

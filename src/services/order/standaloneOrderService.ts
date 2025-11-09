@@ -35,15 +35,24 @@ class StandaloneOrderService {
         if (filter.partner_id) params.partner_id = filter.partner_id;
         if (filter.date_from) params.date_from = filter.date_from;
         if (filter.date_to) params.date_to = filter.date_to;
-        if (filter.limit) params.limit = filter.limit;
-        if (filter.offset) params.offset = filter.offset;
+
+        // Convert offset to page number for REST API
+        if (filter.limit && filter.offset !== undefined) {
+          const page = Math.floor(filter.offset / filter.limit) + 1;
+          params.page = page;
+          params.limit = filter.limit;
+        } else if (filter.limit) {
+          params.limit = filter.limit;
+        }
       }
 
       const response = await standaloneClient.get('/orders', { params });
 
-      console.log('[StandaloneOrderService] Fetched orders:', response.length);
+      console.log('[StandaloneOrderService] Fetched orders:', response?.data?.length || 0);
 
-      return response.map((order: any) => this.transformOrder(order));
+      // Handle both direct array response and success wrapper
+      const orders = Array.isArray(response) ? response : (response.success ? response.data : []);
+      return orders.map((order: any) => this.transformOrder(order));
     } catch (error: any) {
       console.error('[StandaloneOrderService] Failed to fetch orders:', error);
       return [];
@@ -61,7 +70,9 @@ class StandaloneOrderService {
 
       console.log('[StandaloneOrderService] Order fetched successfully');
 
-      return this.transformOrder(response);
+      // Handle success wrapper
+      const order = response.success ? response.data : response;
+      return this.transformOrder(order);
     } catch (error: any) {
       console.error('[StandaloneOrderService] Failed to fetch order:', error);
       throw new Error(error.response?.data?.message || error.message || 'Failed to fetch order');
@@ -319,6 +330,87 @@ class StandaloneOrderService {
   }
 
   /**
+   * Confirm order (change state from draft to sale)
+   */
+  async confirmOrder(orderId: string | number): Promise<Order> {
+    try {
+      console.log('[StandaloneOrderService] Confirming order:', orderId);
+
+      await standaloneClient.put(`/orders/${orderId}/status`, {
+        status: 'sale',
+        custom_status: 'payment_confirmed'
+      });
+
+      console.log('[StandaloneOrderService] Order confirmed successfully');
+
+      return await this.getOrderById(orderId);
+    } catch (error: any) {
+      console.error('[StandaloneOrderService] Failed to confirm order:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to confirm order');
+    }
+  }
+
+  /**
+   * Get order history
+   */
+  async getOrderHistory(limit: number = 20): Promise<Order[]> {
+    try {
+      console.log('[StandaloneOrderService] Fetching order history');
+
+      return await this.getOrders({ limit });
+    } catch (error: any) {
+      console.error('[StandaloneOrderService] Failed to fetch order history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if order has pending payment
+   */
+  async hasOrderPendingPayment(orderId: string | number): Promise<boolean> {
+    try {
+      const order = await this.getOrderById(orderId);
+      const paymentInfo = this.getPaymentInfoFromOrder(order);
+
+      return (
+        !!paymentInfo.paymentId &&
+        paymentInfo.paymentStatus !== 'COMPLETED' &&
+        paymentInfo.paymentStatus !== 'SUCCEEDED' &&
+        paymentInfo.paymentStatus !== 'PAID'
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Get orders with pending payments
+   */
+  async getOrdersWithPendingPayments(): Promise<Order[]> {
+    try {
+      console.log('[StandaloneOrderService] Fetching orders with pending payments');
+
+      const orders = await this.getOrders({ limit: 100 });
+
+      const pendingPaymentOrders = orders.filter((order) => {
+        const paymentInfo = this.getPaymentInfoFromOrder(order);
+        return (
+          paymentInfo.paymentId &&
+          paymentInfo.paymentStatus !== 'COMPLETED' &&
+          paymentInfo.paymentStatus !== 'SUCCEEDED' &&
+          paymentInfo.paymentStatus !== 'PAID' &&
+          order.state === 'waiting_payment'
+        );
+      });
+
+      return pendingPaymentOrders;
+    } catch (error: any) {
+      console.error('[StandaloneOrderService] Failed to fetch pending payment orders:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get payment info from order
    */
   getPaymentInfoFromOrder(order: Order): {
@@ -326,6 +418,16 @@ class StandaloneOrderService {
     paymentMethod?: string;
     paymentStatus?: string;
   } {
+    // Check if order has xendit payment fields (REST API)
+    if (order.xendit_payment_id) {
+      return {
+        paymentId: order.xendit_payment_id,
+        paymentMethod: order.xendit_payment_method,
+        paymentStatus: order.xendit_payment_status,
+      };
+    }
+
+    // Fallback to note parsing (Odoo compatibility)
     if (!order.note) {
       return {};
     }
@@ -395,6 +497,9 @@ class StandaloneOrderService {
       currency_id: apiOrder.currency_id,
       note: apiOrder.note || apiOrder.notes,
       totalItems: apiOrder.order_line?.length || 0,
+      xendit_payment_id: apiOrder.xendit_payment_id,
+      xendit_payment_method: apiOrder.xendit_payment_method,
+      xendit_payment_status: apiOrder.xendit_payment_status,
     };
 
     // Add simplified items for compatibility
