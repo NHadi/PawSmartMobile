@@ -11,7 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -409,13 +409,68 @@ export default function EwalletPaymentScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Manual Check and Done Button */}
+        <TouchableOpacity
+          style={styles.checkButton}
+          onPress={async () => {
+            setPaymentStatus('checking');
+            await checkPaymentStatus();
+
+            // Only navigate to success if payment confirmed
+            if (paymentStatus === 'success') {
+              // Payment confirmed, will auto-navigate via handlePaymentSuccess
+              return;
+            }
+
+            // Payment still pending
+            Alert.alert(
+              'Pembayaran Masih Diproses',
+              'Pembayaran Anda masih dalam proses verifikasi. Anda dapat melihat status pesanan di halaman Aktivitas.',
+              [
+                {
+                  text: 'Tetap di Sini',
+                  style: 'cancel'
+                },
+                {
+                  text: 'Lihat Aktivitas',
+                  onPress: () => {
+                    navigation.dispatch(
+                      CommonActions.reset({
+                        index: 0,
+                        routes: [
+                          {
+                            name: 'Main',
+                            state: {
+                              routes: [
+                                { name: 'Home' },
+                                { name: 'Promo' },
+                                { name: 'Services' },
+                                { name: 'Activity' },
+                                { name: 'Profile' }
+                              ],
+                              index: 3, // Activity tab
+                            },
+                          }
+                        ],
+                      })
+                    );
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <MaterialIcons name="refresh" size={20} color={Colors.primary.main} />
+          <Text style={styles.checkButtonText}>Cek Status & Selesai</Text>
+        </TouchableOpacity>
+
         {/* Loading indicator */}
         {paymentStatus === 'checking' && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.primary.main} />
             <Text style={styles.loadingText}>Processing payment...</Text>
           </View>
-        )}   
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -569,7 +624,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: Spacing.base,
     marginTop: 'auto',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   okButtonDisabled: {
     backgroundColor: Colors.border.light,
@@ -578,6 +633,26 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.white,
+  },
+
+  // Check Button
+  checkButton: {
+    backgroundColor: Colors.background.secondary,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    marginHorizontal: Spacing.base,
+    marginBottom: Spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary.main,
+  },
+  checkButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.primary.main,
   },
 
   // Loading Section
@@ -591,5 +666,5 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
 
-  
+
 });

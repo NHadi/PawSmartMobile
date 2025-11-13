@@ -10,7 +10,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -282,7 +282,7 @@ export default function VirtualAccountPaymentScreen() {
                 <Text style={styles.stepNumberText}>1</Text>
               </View>
               <Text style={styles.stepText}>
-                Masuk ke menu Mobile Banking {bankName}. Kemudian, pilih Pembayaran >
+                Masuk ke menu Mobile Banking {bankName}. Kemudian, pilih Pembayaran {'>'}
               </Text>
             </View>
             
@@ -337,43 +337,90 @@ export default function VirtualAccountPaymentScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Bottom OK Button */}
+      {/* Bottom Buttons */}
       <View style={styles.bottomSection}>
-        <TouchableOpacity 
+        {/* Manual Check Status Button */}
+        <TouchableOpacity
+          style={styles.checkStatusButton}
+          onPress={async () => {
+            setLoading(true);
+            await checkPaymentStatus();
+            setLoading(false);
+          }}
+        >
+          <MaterialIcons name="refresh" size={20} color={Colors.primary.main} />
+          <Text style={styles.checkStatusButtonText}>Cek Status Pembayaran</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.okButton}
-          onPress={() => {
+          onPress={async () => {
             if (hasNavigated) {
               return;
             }
-            setHasNavigated(true);
 
-            // Clear intervals before navigation to prevent conflicts
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = undefined;
-            }
-            if (statusCheckRef.current) {
-              clearInterval(statusCheckRef.current);
-              statusCheckRef.current = undefined;
+            // Check payment status first
+            setLoading(true);
+            await checkPaymentStatus();
+            setLoading(false);
+
+            // Check if payment was successful (handlePaymentSuccess would have been called)
+            // We can determine this by checking if intervals are still running
+            if (!intervalRef.current && !statusCheckRef.current && hasNavigated) {
+              // Payment was successful, navigation already handled by handlePaymentSuccess
+              return;
             }
 
-            // Navigate to universal success screen when OK is pressed
-            navigation.navigate('UniversalSuccess', {
-              orderId: orderInfo?.orderId,
-              orderName: orderInfo?.orderName,
-              totalAmount: orderInfo?.totalAmount || 0,
-              transactionType: 'Virtual Account',
-              timestamp: new Date().toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              }) + ' WIB',
-            });
+            // Payment still pending, show message and navigate to Activity
+            Alert.alert(
+              'Pembayaran Masih Diproses',
+              'Pembayaran Anda masih dalam proses verifikasi. Anda dapat melihat status pesanan di halaman Aktivitas.',
+              [
+                {
+                  text: 'Lihat Aktivitas',
+                  onPress: () => {
+                    setHasNavigated(true);
+                    // Clear intervals
+                    if (intervalRef.current) {
+                      clearInterval(intervalRef.current);
+                      intervalRef.current = undefined;
+                    }
+                    if (statusCheckRef.current) {
+                      clearInterval(statusCheckRef.current);
+                      statusCheckRef.current = undefined;
+                    }
+                    navigation.dispatch(
+                      CommonActions.reset({
+                        index: 0,
+                        routes: [
+                          {
+                            name: 'Main',
+                            state: {
+                              routes: [
+                                { name: 'Home' },
+                                { name: 'Promo' },
+                                { name: 'Services' },
+                                { name: 'Activity' },
+                                { name: 'Profile' }
+                              ],
+                              index: 3, // Activity tab
+                            },
+                          }
+                        ],
+                      })
+                    );
+                  }
+                }
+              ]
+            );
           }}
+          disabled={loading}
         >
-          <Text style={styles.okButtonText}>OK</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color={Colors.text.white} />
+          ) : (
+            <Text style={styles.okButtonText}>OK</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -552,6 +599,23 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border.light,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  checkStatusButton: {
+    backgroundColor: Colors.background.secondary,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary.main,
+  },
+  checkStatusButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.primary.main,
   },
   okButton: {
     backgroundColor: Colors.primary.main,

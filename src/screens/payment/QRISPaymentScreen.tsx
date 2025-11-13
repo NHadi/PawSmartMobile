@@ -10,7 +10,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -408,21 +408,60 @@ export default function QRISPaymentScreen() {
 
         <TouchableOpacity
           style={styles.okButton}
-          onPress={() => {
-            // Navigate to new universal success screen when OK is pressed
-            navigation.replace('UniversalSuccess', {
-              orderId: orderInfo?.orderId,
-              orderName: orderInfo?.orderName,
-              totalAmount: orderInfo?.totalAmount || 0,
-              transactionType: 'QRIS',
-              timestamp: new Date().toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              }) + ' WIB',
-            });
+          onPress={async () => {
+            // Check payment status before navigating
+            setPaymentStatus('checking');
+            await checkPaymentStatus();
+
+            // Only navigate to success screen if payment is confirmed
+            if (paymentStatus === 'success') {
+              navigation.replace('UniversalSuccess', {
+                orderId: orderInfo?.orderId,
+                orderName: orderInfo?.orderName,
+                totalAmount: orderInfo?.totalAmount || 0,
+                transactionType: 'QRIS',
+                timestamp: new Date().toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }) + ' WIB',
+              });
+            } else {
+              // Payment still pending, navigate to Activity screen
+              Alert.alert(
+                'Pembayaran Masih Diproses',
+                'Pembayaran Anda masih dalam proses verifikasi. Anda dapat melihat status pesanan di halaman Aktivitas.',
+                [
+                  {
+                    text: 'Lihat Aktivitas',
+                    onPress: () => {
+                      navigation.dispatch(
+                        CommonActions.reset({
+                          index: 0,
+                          routes: [
+                            {
+                              name: 'Main',
+                              state: {
+                                routes: [
+                                  { name: 'Home' },
+                                  { name: 'Promo' },
+                                  { name: 'Services' },
+                                  { name: 'Activity' },
+                                  { name: 'Profile' }
+                                ],
+                                index: 3, // Activity tab
+                              },
+                            }
+                          ],
+                        })
+                      );
+                    }
+                  }
+                ]
+              );
+            }
           }}
         >
           <Text style={styles.okButtonText}>OK</Text>
