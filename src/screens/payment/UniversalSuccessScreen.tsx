@@ -256,14 +256,7 @@ export default function UniversalSuccessScreen() {
           style={styles.primaryButton}
           onPress={handleViewDetail}
         >
-          <Text style={styles.primaryButtonText}>Lihat Detail</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={handleCancelOrder}
-        >
-          <Text style={styles.cancelButtonText}>Cancel Pesanan</Text>
+          <Text style={styles.primaryButtonText}>Lihat Detail Pesanan</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -272,6 +265,16 @@ export default function UniversalSuccessScreen() {
         >
           <Text style={styles.homeButtonText}>Kembali ke Beranda</Text>
         </TouchableOpacity>
+
+        {/* Only show cancel button for certain scenarios */}
+        {transactionType !== 'Payment' && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={handleCancelOrder}
+          >
+            <Text style={styles.cancelButtonText}>Cancel Pesanan</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

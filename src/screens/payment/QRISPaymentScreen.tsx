@@ -21,6 +21,7 @@ import { HomeStackParamList } from '../../navigation/types';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
 import flipPaymentGateway from '../../services/payment/flipPaymentGateway';
+import PaymentActions from '../../components/payment/PaymentActions';
 
 type PaymentRouteProp = RouteProp<HomeStackParamList, 'QRISPayment'>;
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'QRISPayment'>;
@@ -378,25 +379,28 @@ export default function QRISPaymentScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Buttons */}
-      <View style={styles.bottomSection}>
-        {/* Manual Check Status Button */}
-        <TouchableOpacity
-          style={styles.checkStatusButton}
-          onPress={async () => {
-            setPaymentStatus('checking');
-            await checkPaymentStatus();
-            if (paymentStatus === 'pending') {
-              Alert.alert('Info', 'Pembayaran belum diterima. Silakan coba lagi.');
-            }
-          }}
-        >
-          <MaterialIcons name="refresh" size={20} color={Colors.primary.main} />
-          <Text style={styles.checkStatusButtonText}>Cek Status Pembayaran</Text>
-        </TouchableOpacity>
+      {/* Payment Actions */}
+      <PaymentActions
+        orderId={orderInfo?.orderId}
+        userId={orderInfo?.userId}
+        amount={orderInfo?.totalAmount}
+        paymentData={paymentData}
+        orderInfo={orderInfo}
+        onCheckStatus={async () => {
+          setPaymentStatus('checking');
+          await checkPaymentStatus();
+          if (paymentStatus === 'pending') {
+            Alert.alert('Info', 'Pembayaran belum diterima. Silakan coba lagi.');
+          }
+        }}
+        onPaymentSuccess={handlePaymentSuccess}
+        loading={paymentStatus === 'checking'}
+        setLoading={(loading) => setPaymentStatus(loading ? 'checking' : 'pending')}
+      />
 
-        {/* Test Payment Button - Only for Flip provider in dev mode */}
-        {paymentData?.provider === 'FLIP' && __DEV__ && (
+      {/* Test Payment Button - Only for Flip provider in dev mode */}
+      {paymentData?.provider === 'FLIP' && __DEV__ && (
+        <View style={styles.testButtonContainer}>
           <TouchableOpacity
             style={styles.testButton}
             onPress={handleTestPayment}
@@ -404,8 +408,11 @@ export default function QRISPaymentScreen() {
             <MaterialIcons name="science" size={20} color={Colors.text.white} />
             <Text style={styles.testButtonText}>Test Payment</Text>
           </TouchableOpacity>
-        )}
+        </View>
+      )}
 
+      {/* OK Button */}
+      <View style={styles.okButtonContainer}>
         <TouchableOpacity
           style={styles.okButton}
           onPress={async () => {
@@ -673,30 +680,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   
-  // Bottom Section
-  bottomSection: {
+  // Test Button Container
+  testButtonContainer: {
     backgroundColor: Colors.background.primary,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.border.light,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
-  },
-  checkStatusButton: {
-    backgroundColor: Colors.background.secondary,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.primary.main,
-  },
-  checkStatusButtonText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.primary.main,
   },
   testButton: {
     backgroundColor: Colors.secondary.main,
@@ -711,6 +701,14 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.white,
+  },
+  // OK Button Container
+  okButtonContainer: {
+    backgroundColor: Colors.background.primary,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
   },
   okButton: {
     backgroundColor: Colors.primary.main,

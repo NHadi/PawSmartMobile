@@ -321,6 +321,14 @@ export default function AppNavigator() {
               }}
             />
             <Stack.Screen
+              name="OrderDetail"
+              component={OrderDetailScreen}
+              options={{
+                headerShown: true,
+                title: 'Detail Pesanan',
+              }}
+            />
+            <Stack.Screen
               name="PaymentResult"
               component={PaymentResultScreen}
               options={{

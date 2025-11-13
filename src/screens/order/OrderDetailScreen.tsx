@@ -19,6 +19,7 @@ import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ProfileStackParamList } from '../../navigation/types';
 import kiriminAjaService, { ShippingService } from '../../services/shipping/kiriminAjaService';
 import { Address } from '../../services/addressServiceAPI';
+import standaloneOrderService from '../../services/order/standaloneOrderService';
 
 type NavigationProp = StackNavigationProp<ProfileStackParamList, 'OrderDetail'>;
 type RouteProps = RouteProp<ProfileStackParamList, 'OrderDetail'>;
@@ -189,7 +190,9 @@ export default function OrderDetailScreen() {
   const route = useRoute<RouteProps>();
   const { orderId } = route.params;
 
-  const [orderItems, setOrderItems] = useState(mockOrderDetail.items);
+  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [shippingOptions, setShippingOptions] = useState<{
     express: ShippingService[];
     instant: ShippingService[];
@@ -201,13 +204,177 @@ export default function OrderDetailScreen() {
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
 
-  // In a real app, you would fetch order details based on orderId
-  const order = { ...mockOrderDetail, items: orderItems };
-
-  // Fetch shipping rates on mount
+  // Fetch order details on mount
   useEffect(() => {
-    fetchShippingRates();
-  }, []);
+    fetchOrderDetails();
+  }, [orderId]);
+
+  const fetchOrderDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('[OrderDetailScreen] Fetching order details for:', orderId);
+
+      // Fetch real order data from API
+      const orderData = await standaloneOrderService.getOrderById(orderId);
+
+      console.log('[OrderDetailScreen] Order data received:', orderData);
+
+      // Transform order data to match OrderDetail interface
+      const transformedOrder: OrderDetail = {
+        id: orderData.id?.toString() || orderId,
+        transactionId: orderData.name || `SO${orderData.id}`,
+        items: transformOrderItems(orderData.order_line || []),
+        status: mapOrderStatus(orderData.state || orderData.custom_status || 'pending'),
+        statusText: getStatusText(orderData.state || orderData.custom_status || 'pending'),
+        date: orderData.date_order ? formatDate(orderData.date_order) : new Date().toLocaleDateString('id-ID'),
+        time: orderData.date_order ? formatTime(orderData.date_order) : new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        timeline: generateTimeline(orderData.state || orderData.custom_status || 'pending'),
+        shipping: {
+          method: orderData.partner_shipping_id?.toString() || 'Standard',
+          cost: orderData.amount_total || 0,
+          address: formatShippingAddress(orderData),
+          recipientName: orderData.partner_shipping_id?.toString() || 'Customer',
+          recipientPhone: orderData.partner_phone || 'N/A',
+          option: 'express', // Default, you can determine based on shipping method
+          deliveryAddress: null, // You can parse this if available
+        },
+        payment: {
+          method: orderData.xendit_payment_method || 'Transfer',
+          subtotal: orderData.amount_untaxed || 0,
+          shippingCost: 0, // Add if available
+          discount: 0, // Add if available
+          total: orderData.amount_total || 0,
+        },
+      };
+
+      setOrder(transformedOrder);
+      console.log('[OrderDetailScreen] Order transformed successfully:', transformedOrder);
+    } catch (err: any) {
+      console.error('[OrderDetailScreen] Error fetching order:', err);
+      setError(err.message || 'Failed to load order details');
+      // Fallback to mock data if API fails
+      setOrder(mockOrderDetail);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper functions to transform order data
+  const transformOrderItems = (orderLines: any[]): OrderItem[] => {
+    if (!Array.isArray(orderLines)) return [];
+
+    return orderLines.map((line: any) => ({
+      id: line.id?.toString() || line.product_id?.toString() || Math.random().toString(),
+      name: line.name || line.product_id?.toString() || 'Product',
+      quantity: line.product_uom_qty || 1,
+      price: line.price_unit || 0,
+      image: line.image ? { uri: line.image } : require('../../../assets/product-placeholder.jpg'),
+      orderType: line.autokirim ? 'autokirim' : 'sekali_beli',
+      deliveryPeriod: line.delivery_period || 'N/A',
+      subscriptionDuration: line.subscription_duration || 'N/A',
+    }));
+  };
+
+  const mapOrderStatus = (state: string): OrderStatus => {
+    const statusMap: { [key: string]: OrderStatus } = {
+      'draft': 'pending',
+      'sent': 'processing',
+      'sale': 'processing',
+      'done': 'shipped',
+      'cancel': 'cancelled',
+      'waiting_payment': 'pending',
+      'payment_confirmed': 'processing',
+      'processing': 'processing',
+      'shipped': 'shipped',
+      'delivered': 'delivered',
+    };
+    return statusMap[state.toLowerCase()] || 'pending';
+  };
+
+  const getStatusText = (state: string): string => {
+    const statusTextMap: { [key: string]: string } = {
+      'draft': 'Draft',
+      'sent': 'Dikirim',
+      'sale': 'Diproses',
+      'done': 'Selesai',
+      'cancel': 'Dibatalkan',
+      'waiting_payment': 'Menunggu Pembayaran',
+      'payment_confirmed': 'Pembayaran Dikonfirmasi',
+      'processing': 'Diproses',
+      'shipped': 'Dikirim',
+      'delivered': 'Tiba',
+    };
+    return statusTextMap[state.toLowerCase()] || state;
+  };
+
+  const formatDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return new Date().toLocaleDateString('id-ID');
+    }
+  };
+
+  const formatTime = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  const formatShippingAddress = (orderData: any): string => {
+    const parts = [
+      orderData.partner_shipping_id?.street,
+      orderData.partner_shipping_id?.street2,
+      orderData.partner_shipping_id?.city,
+      orderData.partner_shipping_id?.state_id?.name,
+      orderData.partner_shipping_id?.zip,
+    ].filter(Boolean);
+
+    return parts.join(', ') || 'Alamat tidak tersedia';
+  };
+
+  const generateTimeline = (state: string): TimelineItem[] => {
+    const currentDate = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return [
+      {
+        status: 'Pesanan dibuat',
+        description: '',
+        date: currentDate,
+        isCompleted: true,
+      },
+      // Add more timeline items based on order status
+      ...(state !== 'draft' && state !== 'waiting_payment' ? [{
+        status: 'Pembayaran dikonfirmasi',
+        description: '',
+        date: currentDate,
+        isCompleted: state === 'payment_confirmed' || state === 'processing' || state === 'shipped' || state === 'delivered',
+      }] : []),
+    ];
+  };
+
+  // Fetch shipping rates on mount (only when order is loaded)
+  useEffect(() => {
+    if (order && !loading && !error) {
+      fetchShippingRates();
+    }
+  }, [order, loading, error]);
 
   const fetchShippingRates = async () => {
     setLoadingShipping(true);
@@ -215,7 +382,7 @@ export default function OrderDetailScreen() {
 
     try {
       // Get delivery address from order
-      const deliveryAddress = order.shipping.deliveryAddress;
+      const deliveryAddress = order?.shipping?.deliveryAddress;
 
       if (!deliveryAddress) {
         setShippingError('Alamat pengiriman tidak tersedia');
@@ -328,30 +495,7 @@ export default function OrderDetailScreen() {
     }
   };
 
-  const updateOrderType = (itemId: string, orderType: 'autokirim' | 'sekali_beli') => {
-    setOrderItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, orderType } : item
-      )
-    );
-  };
-
-  const updateDeliveryPeriod = (itemId: string, period: string) => {
-    setOrderItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, deliveryPeriod: period } : item
-      )
-    );
-  };
-
-  const updateSubscriptionDuration = (itemId: string, duration: string) => {
-    setOrderItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, subscriptionDuration: duration } : item
-      )
-    );
-  };
-
+  
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case 'pending':
@@ -473,6 +617,71 @@ export default function OrderDetailScreen() {
     </View>
   );
 
+  // Show loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={Colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Riwayat Pesanan</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary.main} />
+          <Text style={styles.loadingText}>Memuat detail pesanan...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={Colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Riwayat Pesanan</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error" size={48} color={Colors.error.main} />
+          <Text style={styles.errorTitle}>Gagal Memuat</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchOrderDetails}>
+            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show order not found state
+  if (!order) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={Colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Riwayat Pesanan</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="search-off" size={48} color={Colors.text.tertiary} />
+          <Text style={styles.errorTitle}>Pesanan Tidak Ditemukan</Text>
+          <Text style={styles.errorMessage}>Pesanan dengan ID {orderId} tidak ditemukan</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.retryButtonText}>Kembali</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -480,7 +689,7 @@ export default function OrderDetailScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Riwayat Pesanan</Text>
+        <Text style={styles.headerTitle}>Riwayat Pesanan #{order.id}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -769,6 +978,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background.secondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background.primary,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.medium,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background.primary,
+    paddingHorizontal: Spacing.xl,
+  },
+  errorTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontFamily: Typography.fontFamily.semibold,
+    color: Colors.text.primary,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary.main,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
+  },
+  retryButtonText: {
+    color: Colors.text.white,
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.semibold,
   },
   header: {
     flexDirection: 'row',

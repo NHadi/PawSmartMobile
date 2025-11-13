@@ -55,6 +55,7 @@ export type RootStackParamList = {
     transactionType?: string;
     timestamp?: string;
   };
+  OrderDetail: { orderId: string };
 };
 
 export type AuthStackParamList = {

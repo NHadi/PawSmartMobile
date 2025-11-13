@@ -20,6 +20,7 @@ import { RootStackParamList } from '../../navigation/types';
 import paymentSimulator from '../../services/payment/paymentSimulator';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
+import PaymentActions from '../../components/payment/PaymentActions';
 
 type PaymentRouteProp = RouteProp<RootStackParamList, 'VirtualAccountPayment'>;
 type NavigationProp = StackNavigationProp<RootStackParamList, 'VirtualAccountPayment'>;
@@ -192,7 +193,7 @@ export default function VirtualAccountPaymentScreen() {
     setLoading(true);
     try {
       const result = await paymentSimulator.simulateVirtualAccountPayment(orderId);
-      
+
       if (result.success) {
         await handlePaymentSuccess();
       } else {
@@ -207,6 +208,7 @@ export default function VirtualAccountPaymentScreen() {
     }
   };
 
+  
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -337,21 +339,21 @@ export default function VirtualAccountPaymentScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Bottom Buttons */}
-      <View style={styles.bottomSection}>
-        {/* Manual Check Status Button */}
-        <TouchableOpacity
-          style={styles.checkStatusButton}
-          onPress={async () => {
-            setLoading(true);
-            await checkPaymentStatus();
-            setLoading(false);
-          }}
-        >
-          <MaterialIcons name="refresh" size={20} color={Colors.primary.main} />
-          <Text style={styles.checkStatusButtonText}>Cek Status Pembayaran</Text>
-        </TouchableOpacity>
+      {/* Payment Actions */}
+      <PaymentActions
+        orderId={orderId}
+        userId={orderInfo?.userId}
+        amount={amount}
+        paymentData={paymentData}
+        orderInfo={orderInfo}
+        onCheckStatus={checkPaymentStatus}
+        onPaymentSuccess={handlePaymentSuccess}
+        loading={loading}
+        setLoading={setLoading}
+      />
 
+      {/* OK Button */}
+      <View style={styles.okButtonContainer}>
         <TouchableOpacity
           style={styles.okButton}
           onPress={async () => {
@@ -592,30 +594,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   
-  // Bottom Section
-  bottomSection: {
+  // OK Button Container
+  okButtonContainer: {
     backgroundColor: Colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border.light,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
-    gap: Spacing.sm,
-  },
-  checkStatusButton: {
-    backgroundColor: Colors.background.secondary,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.primary.main,
-  },
-  checkStatusButtonText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.primary.main,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
   },
   okButton: {
     backgroundColor: Colors.primary.main,
