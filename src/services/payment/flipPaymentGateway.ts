@@ -9,6 +9,70 @@ const FLIP_CONFIG = {
   VALIDATION_KEY: PAYMENT_GATEWAY_CONFIG.FLIP.VALIDATION_KEY,
 };
 
+// Valid Flip E-Wallet codes (based on Flip API documentation)
+const VALID_FLIP_EWALLET_CODES = [
+  'qris',
+  'ovo',
+  'dana',
+  'gopay',
+  'linkaja',
+  'shopeepay_app' // Only ShopeePay uses _app suffix
+];
+
+// Map Xendit channel codes to Flip e-wallet codes
+const XENDIT_TO_FLIP_EWALLET_MAP: Record<string, string> = {
+  'ID_GOJEK': 'gopay',
+  'ID_DANA': 'dana',
+  'ID_OVO': 'ovo',
+  'ID_SHOPEEPAY': 'shopeepay_app', // ShopeePay keeps _app suffix
+  'ID_LINKAJA': 'linkaja'
+};
+
+/**
+ * Map channel code to Flip e-wallet code format
+ * @param channelCode - Xendit or Flip channel code
+ * @returns Flip e-wallet code (correct Flip API format)
+ */
+function mapToFlipEwalletCode(channelCode: string): string {
+  // First check if it's already a valid Flip code
+  if (VALID_FLIP_EWALLET_CODES.includes(channelCode)) {
+    return channelCode;
+  }
+
+  // Map Xendit codes to Flip codes
+  if (XENDIT_TO_FLIP_EWALLET_MAP[channelCode]) {
+    return XENDIT_TO_FLIP_EWALLET_MAP[channelCode];
+  }
+
+  // Try to convert simple names (gopay, dana, ovo, etc.) without _app suffix
+  // except for shopeepay which keeps _app
+  const simpleName = channelCode.toLowerCase().replace('id_', '');
+
+  if (simpleName === 'shopeepay') {
+    return 'shopeepay_app';
+  } else if (VALID_FLIP_EWALLET_CODES.includes(simpleName)) {
+    return simpleName;
+  }
+
+  // Default to ovo as fallback
+  console.warn(`Unknown e-wallet code "${channelCode}", defaulting to ovo`);
+  return 'ovo';
+}
+
+/**
+ * Validate e-wallet code for Flip API
+ * @param ewalletCode - E-wallet code to validate
+ * @throws Error if code is invalid
+ */
+function validateFlipEwalletCode(ewalletCode: string): void {
+  if (!VALID_FLIP_EWALLET_CODES.includes(ewalletCode)) {
+    throw new Error(
+      `Invalid Flip e-wallet code: ${ewalletCode}. ` +
+      `Valid codes: ${VALID_FLIP_EWALLET_CODES.join(', ')}`
+    );
+  }
+}
+
 // Flip API Client with correct authentication
 const flipClient = axios.create({
   baseURL: FLIP_CONFIG.BASE_URL,
@@ -503,6 +567,12 @@ class FlipService {
     try {
       console.log('Creating Flip E-Wallet payment (staging):', request);
 
+      // Map and validate e-wallet code
+      const flipEwalletCode = mapToFlipEwalletCode(request.ewallet_code);
+      validateFlipEwalletCode(flipEwalletCode);
+
+      console.log(`Mapped e-wallet code: ${request.ewallet_code} -> ${flipEwalletCode}`);
+
       // Set expiration to 60 minutes from now (standard for e-wallet)
       const expiredDate = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -514,7 +584,7 @@ class FlipService {
         amount: request.amount,
         sender_name: request.customer_name,
         sender_email: request.customer_email || 'noreply@example.com', // Required field
-        sender_bank: request.ewallet_code, // E-wallet code (shopeepay_app, ovo_app, dana_app, gopay_app, linkaja_app)
+        sender_bank: flipEwalletCode, // Use mapped and validated e-wallet code
         sender_bank_type: 'wallet_account', // E-wallet payment type
         reference_id: request.order_id, // Optional merchant reference
       };
@@ -538,14 +608,14 @@ class FlipService {
       else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
       else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
 
-      // Map e-wallet code to name
+      // Map e-wallet code to name (using correct Flip codes)
       const ewalletNames: Record<string, string> = {
-        shopeepay_app: 'ShopeePay',
+        qris: 'QRIS',
         ovo: 'OVO',
         dana: 'DANA',
         gopay: 'GoPay',
         linkaja: 'LinkAja',
-        shopeepay: 'ShopeePay',
+        shopeepay_app: 'ShopeePay', // Only ShopeePay uses _app suffix
       };
 
       return {
@@ -553,8 +623,8 @@ class FlipService {
         link_id: flipResponse.link_id,
         link_url: flipResponse.link_url || '',
         payment_url: flipResponse.payment_url || '',
-        ewallet_code: request.ewallet_code,
-        ewallet_name: ewalletNames[request.ewallet_code.toLowerCase()] || request.ewallet_code.toUpperCase(),
+        ewallet_code: flipEwalletCode,
+        ewallet_name: ewalletNames[flipEwalletCode] || flipEwalletCode.toUpperCase(),
         amount: flipResponse.amount,
         order_id: request.order_id,
         status: paymentStatus,
@@ -565,6 +635,19 @@ class FlipService {
     } catch (error: any) {
       console.error('Flip E-Wallet payment creation failed:', error.response?.data || error.message);
       console.error('Flip request config:', error.config);
+
+      // Handle validation errors more specifically
+      if (error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        const errorMessages = validationErrors.map((err: any) => `${err.attribute}: ${err.message}`).join(', ');
+        throw new Error(`Flip validation error: ${errorMessages}`);
+      }
+
+      // Handle specific error codes
+      if (error.response?.data?.code === 'VALIDATION_ERROR') {
+        throw new Error(`Flip validation failed: ${error.response.data.message || 'Invalid e-wallet selection'}`);
+      }
+
       throw new Error(error.response?.data?.message || 'Failed to create Flip E-Wallet payment');
     }
   }
@@ -592,14 +675,14 @@ class FlipService {
       else if (billStatus === 'EXPIRED') paymentStatus = 'EXPIRED';
       else if (billStatus === 'CANCELLED' || billStatus === 'INACTIVE') paymentStatus = 'EXPIRED';
 
-      // Map e-wallet code to name
+      // Map e-wallet code to name (using correct Flip codes)
       const ewalletNames: Record<string, string> = {
-        shopeepay_app: 'ShopeePay',
+        qris: 'QRIS',
         ovo: 'OVO',
         dana: 'DANA',
         gopay: 'GoPay',
         linkaja: 'LinkAja',
-        shopeepay: 'ShopeePay',
+        shopeepay_app: 'ShopeePay', // Only ShopeePay uses _app suffix
       };
 
       return {
@@ -913,5 +996,8 @@ class FlipService {
     };
   }
 }
+
+// Export the mapping function for testing purposes
+export { mapToFlipEwalletCode, validateFlipEwalletCode, VALID_FLIP_EWALLET_CODES };
 
 export default new FlipService();

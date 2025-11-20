@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -147,9 +147,24 @@ const copyTransactionId = async (transactionId: string) => {
   }
 };
 
-export default function ActivityScreen() {
+export default function ActivityScreen({ initialParams }: { initialParams?: { refresh?: boolean } }) {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
+  const route = useRoute<RouteProp<ActivityStackParamList, 'ActivityScreen'>>();
+
+  // Check for refresh parameter from navigation or initial params
+  useEffect(() => {
+    const shouldRefresh = route.params?.refresh || initialParams?.refresh;
+    if (shouldRefresh) {
+      // Refresh orders when coming from failed payment
+      refetchOrders();
+
+      // Clear the refresh parameter to prevent multiple refreshes
+      if (route.params?.refresh) {
+        navigation.setParams({ refresh: undefined });
+      }
+    }
+  }, [route.params?.refresh, initialParams?.refresh, refetchOrders, navigation]);
   const [selectedTab, setSelectedTab] = useState<'belanja' | 'dokter' | 'salon'>('belanja');
   const [expandedOrders, setExpandedOrders] = useState<{ [key: string]: boolean }>({});
   const [expandedDateSections, setExpandedDateSections] = useState<{ [key: string]: boolean }>({});

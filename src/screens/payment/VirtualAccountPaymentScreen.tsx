@@ -20,7 +20,6 @@ import { RootStackParamList } from '../../navigation/types';
 import paymentSimulator from '../../services/payment/paymentSimulator';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
-import PaymentActions from '../../components/payment/PaymentActions';
 
 type PaymentRouteProp = RouteProp<RootStackParamList, 'VirtualAccountPayment'>;
 type NavigationProp = StackNavigationProp<RootStackParamList, 'VirtualAccountPayment'>;
@@ -339,19 +338,6 @@ export default function VirtualAccountPaymentScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Payment Actions */}
-      <PaymentActions
-        orderId={orderId}
-        userId={orderInfo?.userId}
-        amount={amount}
-        paymentData={paymentData}
-        orderInfo={orderInfo}
-        onCheckStatus={checkPaymentStatus}
-        onPaymentSuccess={handlePaymentSuccess}
-        loading={loading}
-        setLoading={setLoading}
-      />
-
       {/* OK Button */}
       <View style={styles.okButtonContainer}>
         <TouchableOpacity
@@ -402,7 +388,7 @@ export default function VirtualAccountPaymentScreen() {
                                 { name: 'Home' },
                                 { name: 'Promo' },
                                 { name: 'Services' },
-                                { name: 'Activity' },
+                                { name: 'Activity', params: { refresh: true } },
                                 { name: 'Profile' }
                               ],
                               index: 3, // Activity tab

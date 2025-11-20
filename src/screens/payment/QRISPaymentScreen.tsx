@@ -21,7 +21,6 @@ import { HomeStackParamList } from '../../navigation/types';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
 import flipPaymentGateway from '../../services/payment/flipPaymentGateway';
-import PaymentActions from '../../components/payment/PaymentActions';
 
 type PaymentRouteProp = RouteProp<HomeStackParamList, 'QRISPayment'>;
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'QRISPayment'>;
@@ -379,38 +378,6 @@ export default function QRISPaymentScreen() {
         </View>
       </ScrollView>
 
-      {/* Payment Actions */}
-      <PaymentActions
-        orderId={orderInfo?.orderId}
-        userId={orderInfo?.userId}
-        amount={orderInfo?.totalAmount}
-        paymentData={paymentData}
-        orderInfo={orderInfo}
-        onCheckStatus={async () => {
-          setPaymentStatus('checking');
-          await checkPaymentStatus();
-          if (paymentStatus === 'pending') {
-            Alert.alert('Info', 'Pembayaran belum diterima. Silakan coba lagi.');
-          }
-        }}
-        onPaymentSuccess={handlePaymentSuccess}
-        loading={paymentStatus === 'checking'}
-        setLoading={(loading) => setPaymentStatus(loading ? 'checking' : 'pending')}
-      />
-
-      {/* Test Payment Button - Only for Flip provider in dev mode */}
-      {paymentData?.provider === 'FLIP' && __DEV__ && (
-        <View style={styles.testButtonContainer}>
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={handleTestPayment}
-          >
-            <MaterialIcons name="science" size={20} color={Colors.text.white} />
-            <Text style={styles.testButtonText}>Test Payment</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* OK Button */}
       <View style={styles.okButtonContainer}>
         <TouchableOpacity
@@ -455,7 +422,7 @@ export default function QRISPaymentScreen() {
                                   { name: 'Home' },
                                   { name: 'Promo' },
                                   { name: 'Services' },
-                                  { name: 'Activity' },
+                                  { name: 'Activity', params: { refresh: true } },
                                   { name: 'Profile' }
                                 ],
                                 index: 3, // Activity tab

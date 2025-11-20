@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../../config/environment';
+import { safeApiCall, isAuthError } from '../../utils/authErrorHandler';
 
 const AUTH_TOKEN_KEY = config.STORAGE_KEYS.AUTH_TOKEN;
 
@@ -66,7 +67,7 @@ class StandaloneAddressService {
    * Similar to getCurrentUser() in standaloneAuthService
    */
   async getAddresses(): Promise<Address[]> {
-    try {
+    return safeApiCall(async () => {
       const authHeader = await this.getAuthHeader();
       if (!authHeader) {
         throw new Error('Not authenticated');
@@ -87,7 +88,11 @@ class StandaloneAddressService {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Unauthorized - Please login again');
+          const error = new Error('Unauthorized - Please login again');
+          // Add response data for auth error handler
+          (error as any).response = { status: 401 };
+          (error as any).message = 'Unauthorized - Please login again';
+          throw error;
         }
         throw new Error(`Failed to fetch addresses: ${response.status}`);
       }
@@ -104,19 +109,10 @@ class StandaloneAddressService {
         console.warn('Unexpected response format:', data);
         return [];
       }
-    } catch (error: any) {
-      console.error('getAddresses - Error:', error.message);
-
-      // Handle network errors
-      if (error.message?.includes('Network') ||
-          error.message?.includes('fetch') ||
-          error.message?.includes('ECONNREFUSED') ||
-          error.message?.includes('ETIMEDOUT')) {
-        throw new Error('Server tidak tersedia. Silakan coba lagi nanti.');
-      }
-
-      throw error;
-    }
+    }, {
+      // Custom auth error handling options
+      showAlert: false, // Don't show alert for seamless UX
+    }) || Promise.resolve([]); // Fallback to empty array if auth error
   }
 
   /**
@@ -124,7 +120,7 @@ class StandaloneAddressService {
    * Similar to getCurrentUser() pattern for bearer token usage
    */
   async createAddress(addressData: CreateAddressRequest): Promise<Address> {
-    try {
+    return safeApiCall(async () => {
       const authHeader = await this.getAuthHeader();
       if (!authHeader) {
         throw new Error('Not authenticated');
@@ -147,7 +143,10 @@ class StandaloneAddressService {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Unauthorized - Please login again');
+          const error = new Error('Unauthorized - Please login again');
+          (error as any).response = { status: 401 };
+          (error as any).message = 'Unauthorized - Please login again';
+          throw error;
         }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to create address: ${response.status}`);
@@ -164,19 +163,9 @@ class StandaloneAddressService {
       } else {
         throw new Error('Invalid response format');
       }
-    } catch (error: any) {
-      console.error('createAddress - Error:', error.message);
-
-      // Handle network errors
-      if (error.message?.includes('Network') ||
-          error.message?.includes('fetch') ||
-          error.message?.includes('ECONNREFUSED') ||
-          error.message?.includes('ETIMEDOUT')) {
-        throw new Error('Server tidak tersedia. Silakan coba lagi nanti.');
-      }
-
-      throw error;
-    }
+    }, {
+      showAlert: false,
+    }) as Promise<Address>;
   }
 
   /**
