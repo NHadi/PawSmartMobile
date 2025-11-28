@@ -1,26 +1,36 @@
 // TypeScript interfaces for Indonesian location API responses
 
 export interface Province {
-  id: string;
+  id: string | number;
   name: string;
 }
 
 export interface City {
-  id: string;
-  province_id: string;
+  id: string | number;
+  province_id?: string | number;
+  provinsi_id?: number; // Kirimin-Aja format
   name: string;
 }
 
 export interface District {
-  id: string;
-  regency_id: string;
+  id: string | number;
+  regency_id?: string | number;
+  kabupaten_id?: number; // Kirimin-Aja format
   name: string;
 }
 
 export interface Village {
-  id: string;
-  district_id: string;
+  id: string | number;
+  district_id?: string | number;
+  kecamatan_id?: number; // Kirimin-Aja format
   name: string;
+}
+
+// Kirimin-Aja Coverage API types (for sub-districts)
+export interface SubDistrict {
+  id: number;
+  name: string;
+  kecamatan_id: number;
 }
 
 // Postal Code API response structure
@@ -40,15 +50,19 @@ export interface PostalCodeResponse {
 // Internal app location selection state
 export interface LocationSelection {
   province?: {
-    id: string;
+    id: string | number;
     name: string;
   };
   city?: {
-    id: string;
+    id: string | number;
     name: string;
   };
   district?: {
-    id: string;
+    id: string | number;
+    name: string;
+  };
+  subDistrict?: {
+    id: number;
     name: string;
   };
   postalCode?: string;

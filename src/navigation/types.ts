@@ -157,6 +157,13 @@ export type HomeStackParamList = {
   };
   LocationPicker: {
     onLocationSelected?: (location: any) => void;
+    selectedLocation?: {
+      province?: string;
+      city?: string;
+      district?: string;
+      subDistrict?: string;
+      postalCode?: string;
+    };
   };
   MapPicker: {
     onLocationSelected?: (location: any) => void;

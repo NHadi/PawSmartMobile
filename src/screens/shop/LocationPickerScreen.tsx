@@ -18,16 +18,15 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
+import { coverageApiService, CoverageProvince, CoverageCity, CoverageDistrict, CoverageSubDistrict } from '../../services/location/coverageApiService';
 import { localLocationAPI } from '../../services/location/localLocationService';
-import kiriminAjaService from '../../services/shipping/kiriminAjaService';
-import { Province, City, District, LocationSelection } from '../../types/location';
+import { Province, City, District, SubDistrict, LocationSelection } from '../../types/location';
 import { LocationListSkeleton } from '../../components/LoadingSkeletons/LocationSkeleton';
-// import { indonesiaData } from '../../data/indonesiaData';
 
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'LocationPicker'>;
 type RouteProps = RouteProp<HomeStackParamList, 'LocationPicker'>;
 
-type SelectionStep = 'province' | 'city' | 'district' | 'postalCode';
+type SelectionStep = 'province' | 'city' | 'district' | 'subDistrict' | 'postalCode';
 
 export default function LocationPickerScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -45,6 +44,7 @@ export default function LocationPickerScreen() {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [subDistricts, setSubDistricts] = useState<SubDistrict[]>([]);
   const [postalCodes, setPostalCodes] = useState<{code: string, area: string}[]>([]);
 
   // Loading states
@@ -52,47 +52,52 @@ export default function LocationPickerScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const handleProvinceSelect = async (province: Province) => {
-    setSelection({ province });
+    setSelection({ province: { id: province.id, name: province.name } });
     setPostalCode('');
     setSearchText(''); // Clear search filter
     setCities([]);
     setDistricts([]);
+    setSubDistricts([]);
     setPostalCodes([]);
     setCurrentStep('city');
 
-    // Load cities for selected province
-    await loadCities(province.id);
+    // Load cities for selected province using Coverage API
+    await loadCities(Number(province.id));
   };
 
   const handleCitySelect = async (city: City) => {
-    setSelection(prev => ({ ...prev, city }));
+    setSelection(prev => ({ ...prev, city: { id: city.id, name: city.name } }));
     setPostalCode('');
     setSearchText(''); // Clear search filter
     setDistricts([]);
+    setSubDistricts([]);
     setPostalCodes([]);
 
-    // Try to load districts first
-    await loadDistricts(city.id);
-
-    // If no districts available, skip directly to postal codes
-    const districtsResult = await localLocationAPI.getDistricts(city.id);
-    if (districtsResult.data.length === 0) {
-      setCurrentStep('postalCode');
-      await loadPostalCodes(city.name);
-    } else {
-      setCurrentStep('district');
-    }
+    // Load districts using Coverage API
+    await loadDistricts(Number(city.id));
+    setCurrentStep('district');
   };
 
   const handleDistrictSelect = async (district: District) => {
-    const updatedSelection = { ...selection, district };
-    setSelection(updatedSelection);
+    setSelection(prev => ({ ...prev, district: { id: district.id, name: district.name } }));
+    setPostalCode('');
+    setSearchText(''); // Clear search filter
+    setSubDistricts([]);
+    setPostalCodes([]);
+
+    // Load sub-districts using Coverage API
+    await loadSubDistricts(Number(district.id));
+    setCurrentStep('subDistrict');
+  };
+
+  const handleSubDistrictSelect = async (subDistrict: SubDistrict) => {
+    setSelection(prev => ({ ...prev, subDistrict: { id: subDistrict.id, name: subDistrict.name } }));
     setPostalCode('');
     setSearchText(''); // Clear search filter
     setCurrentStep('postalCode');
 
-    // Load postal codes for selected district
-    await loadPostalCodes(district.name, updatedSelection.city?.name);
+    // Load postal codes using local data (kodepos.json)
+    await loadPostalCodes(subDistrict.name, selection.city?.name);
   };
 
   const handlePostalCodeSelect = async (code: string) => {
@@ -104,39 +109,26 @@ export default function LocationPickerScreen() {
 
     console.log('Final selection before navigation:', finalSelection);
 
-    // Fetch KiriminAja location IDs for shipping
-    let kiriminAjaData = null;
-    try {
-      if (finalSelection.district && finalSelection.city) {
-        // Search with district and city for better accuracy
-        const searchKeyword = `${finalSelection.district.name}, ${finalSelection.city.name}`;
-        console.log('Searching KiriminAja for:', searchKeyword);
-
-        const result = await kiriminAjaService.searchLocation(searchKeyword);
-        if (result.results && result.results.length > 0) {
-          kiriminAjaData = result.results[0];
-          console.log('KiriminAja location found:', kiriminAjaData);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to fetch KiriminAja location:', error);
-      // Continue without KiriminAja data - instant shipping will still work with coordinates
-    }
-
+    // Build location data with IDs from Coverage API selection
     const locationData = {
       province: finalSelection.province?.name,
       city: finalSelection.city?.name,
       district: finalSelection.district?.name,
+      subDistrict: finalSelection.subDistrict?.name,
       postalCode: code,
-      fullAddress: finalSelection.district
+      fullAddress: finalSelection.subDistrict
+        ? `${finalSelection.subDistrict.name}, ${finalSelection.district?.name}, ${finalSelection.city?.name}`
+        : finalSelection.district
         ? `${finalSelection.district.name}, ${finalSelection.city?.name}`
         : finalSelection.city?.name,
-      // Add KiriminAja IDs for shipping calculations
-      province_id: kiriminAjaData?.province_id?.toString(),
-      city_id: kiriminAjaData?.city_id?.toString(),
-      district_id: kiriminAjaData?.district_id?.toString(),
-      subdistrict_id: kiriminAjaData?.subdistrict_id?.toString(),
+      // IDs from Coverage API selection (already numeric)
+      province_id: finalSelection.province?.id?.toString(),
+      city_id: finalSelection.city?.id?.toString(),
+      district_id: finalSelection.district?.id?.toString(),
+      subdistrict_id: finalSelection.subDistrict?.id?.toString(),
     };
+
+    console.log('Location data with Coverage API IDs:', locationData);
 
     // Use callback if provided, otherwise navigate back to AddAddress
     if (onLocationSelected) {
@@ -149,12 +141,12 @@ export default function LocationPickerScreen() {
     }
   };
 
-  // Loading functions
+  // Loading functions using Coverage API
   const loadProvinces = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await localLocationAPI.getProvinces();
+      const result = await coverageApiService.getProvinces();
       setProvinces(result.data);
       if (result.error) {
         setError(result.error);
@@ -166,11 +158,11 @@ export default function LocationPickerScreen() {
     }
   };
 
-  const loadCities = async (provinceId: string) => {
+  const loadCities = async (provinsiId: number) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await localLocationAPI.getCities(provinceId);
+      const result = await coverageApiService.getCities(provinsiId);
       setCities(result.data);
       if (result.error) {
         setError(result.error);
@@ -182,17 +174,33 @@ export default function LocationPickerScreen() {
     }
   };
 
-  const loadDistricts = async (cityId: string) => {
+  const loadDistricts = async (kabupatenId: number) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await localLocationAPI.getDistricts(cityId);
+      const result = await coverageApiService.getDistricts(kabupatenId);
       setDistricts(result.data);
       if (result.error) {
         setError(result.error);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load districts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSubDistricts = async (kecamatanId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await coverageApiService.getSubDistricts(kecamatanId);
+      setSubDistricts(result.data);
+      if (result.error) {
+        setError(result.error);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load sub-districts');
     } finally {
       setLoading(false);
     }
@@ -235,50 +243,71 @@ export default function LocationPickerScreen() {
           currentSelection.province = { id: province.id, name: province.name };
           setSelection(currentSelection);
 
-          // Load cities for the province
-          await loadCities(province.id);
+          // Load cities for the province using Coverage API
+          const citiesResult = await coverageApiService.getCities(Number(province.id));
+          if (citiesResult.data && citiesResult.data.length > 0) {
+            setCities(citiesResult.data);
 
-          // Find and select city
-          if (selectedLocation.city) {
-            // Wait for cities to load
-            const citiesResult = await localLocationAPI.getCities(province.id);
-            if (citiesResult.data) {
+            // Find and select city
+            if (selectedLocation.city) {
               const city = citiesResult.data.find(c => c.name === selectedLocation.city);
               if (city) {
                 console.log('Auto-filling city:', city.name);
                 currentSelection.city = { id: city.id, name: city.name };
                 setSelection({...currentSelection});
-                setCities(citiesResult.data);
 
-                // Load districts for the city
-                await loadDistricts(city.id);
+                // Load districts for the city using Coverage API
+                const districtsResult = await coverageApiService.getDistricts(Number(city.id));
+                if (districtsResult.data && districtsResult.data.length > 0) {
+                  setDistricts(districtsResult.data);
 
-                // Find and select district
-                if (selectedLocation.district) {
-                  const districtsResult = await localLocationAPI.getDistricts(city.id);
-                  if (districtsResult.data) {
+                  // Find and select district
+                  if (selectedLocation.district) {
                     const district = districtsResult.data.find(d => d.name === selectedLocation.district);
                     if (district) {
                       console.log('Auto-filling district:', district.name);
                       currentSelection.district = { id: district.id, name: district.name };
                       setSelection({...currentSelection});
-                      setDistricts(districtsResult.data);
 
-                      // Load postal codes
-                      await loadPostalCodes(district.name, city.name);
-                      setCurrentStep('postalCode');
+                      // Load sub-districts for the district using Coverage API
+                      const subDistrictsResult = await coverageApiService.getSubDistricts(Number(district.id));
+                      if (subDistrictsResult.data && subDistrictsResult.data.length > 0) {
+                        setSubDistricts(subDistrictsResult.data);
+
+                        // Find and select sub-district
+                        if (selectedLocation.subDistrict) {
+                          const subDistrict = subDistrictsResult.data.find(sd => sd.name === selectedLocation.subDistrict);
+                          if (subDistrict) {
+                            console.log('Auto-filling sub-district:', subDistrict.name);
+                            currentSelection.subDistrict = { id: subDistrict.id, name: subDistrict.name };
+                            setSelection({...currentSelection});
+
+                            // Load postal codes
+                            await loadPostalCodes(subDistrict.name, city.name);
+                            setCurrentStep('postalCode');
+                          } else {
+                            setCurrentStep('subDistrict');
+                          }
+                        } else {
+                          setCurrentStep('subDistrict');
+                        }
+                      } else {
+                        setCurrentStep('subDistrict');
+                      }
                     } else {
                       setCurrentStep('district');
                     }
+                  } else {
+                    setCurrentStep('district');
                   }
                 } else {
-                  // No district selected, but city is selected - load postal codes for city
-                  await loadPostalCodes('', city.name);
-                  setCurrentStep('postalCode');
+                  setCurrentStep('district');
                 }
               } else {
                 setCurrentStep('city');
               }
+            } else {
+              setCurrentStep('city');
             }
           } else {
             setCurrentStep('city');
@@ -317,13 +346,10 @@ export default function LocationPickerScreen() {
       setCurrentStep('province');
     } else if (currentStep === 'district') {
       setCurrentStep('city');
+    } else if (currentStep === 'subDistrict') {
+      setCurrentStep('district');
     } else if (currentStep === 'postalCode') {
-      // Check if we have districts, if not go back to city
-      if (districts.length === 0) {
-        setCurrentStep('city');
-      } else {
-        setCurrentStep('district');
-      }
+      setCurrentStep('subDistrict');
     }
   };
 
@@ -343,6 +369,9 @@ export default function LocationPickerScreen() {
         break;
       case 'district':
         data = districts;
+        break;
+      case 'subDistrict':
+        data = subDistricts;
         break;
       case 'postalCode':
         // If no postal codes from API, provide fallback
@@ -379,6 +408,8 @@ export default function LocationPickerScreen() {
         return 'Kabupaten Kota';
       case 'district':
         return 'Kecamatan';
+      case 'subDistrict':
+        return 'Kelurahan';
       case 'postalCode':
         return 'Kode Pos';
       default:
@@ -394,6 +425,8 @@ export default function LocationPickerScreen() {
         return selection.city?.name;
       case 'district':
         return selection.district?.name;
+      case 'subDistrict':
+        return selection.subDistrict?.name;
       case 'postalCode':
         return postalCode;
       default:
@@ -412,8 +445,13 @@ export default function LocationPickerScreen() {
       case 'district':
         handleDistrictSelect(item as District);
         break;
+      case 'subDistrict':
+        handleSubDistrictSelect(item as SubDistrict);
+        break;
       case 'postalCode':
-        handlePostalCodeSelect(item.name);
+        // Use item.id which contains just the postal code (e.g., "45252")
+        // item.name contains display format like "Pamayahan 45252"
+        handlePostalCodeSelect(item.id);
         break;
     }
   };
@@ -492,7 +530,7 @@ export default function LocationPickerScreen() {
               <Ionicons name="chevron-forward" size={16} color={Colors.text.tertiary} />
             </TouchableOpacity>
           )}
-          {selection.district && currentStep === 'postalCode' && (
+          {selection.district && (currentStep === 'subDistrict' || currentStep === 'postalCode') && (
             <TouchableOpacity
               style={styles.breadcrumbItem}
               onPress={() => {
@@ -504,6 +542,22 @@ export default function LocationPickerScreen() {
               <View style={styles.breadcrumbContent}>
                 <Text style={styles.breadcrumbLabel}>Kecamatan</Text>
                 <Text style={styles.breadcrumbValue}>{selection.district.name}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.text.tertiary} />
+            </TouchableOpacity>
+          )}
+          {selection.subDistrict && currentStep === 'postalCode' && (
+            <TouchableOpacity
+              style={styles.breadcrumbItem}
+              onPress={() => {
+                setSearchText(''); // Clear search
+                setCurrentStep('subDistrict');
+              }}
+            >
+              <View style={styles.sectionIndicator} />
+              <View style={styles.breadcrumbContent}>
+                <Text style={styles.breadcrumbLabel}>Kelurahan</Text>
+                <Text style={styles.breadcrumbValue}>{selection.subDistrict.name}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.text.tertiary} />
             </TouchableOpacity>
@@ -529,16 +583,19 @@ export default function LocationPickerScreen() {
                 loadProvinces();
                 break;
               case 'city':
-                if (selection.province) loadCities(selection.province.id);
+                if (selection.province) loadCities(Number(selection.province.id));
                 break;
               case 'district':
-                if (selection.city) loadDistricts(selection.city.id);
+                if (selection.city) loadDistricts(Number(selection.city.id));
+                break;
+              case 'subDistrict':
+                if (selection.district) loadSubDistricts(Number(selection.district.id));
                 break;
               case 'postalCode':
-                if (selection.district) {
+                if (selection.subDistrict) {
+                  loadPostalCodes(selection.subDistrict.name, selection.city?.name);
+                } else if (selection.district) {
                   loadPostalCodes(selection.district.name, selection.city?.name);
-                } else if (selection.city) {
-                  loadPostalCodes(selection.city.name);
                 }
                 break;
             }
@@ -550,7 +607,7 @@ export default function LocationPickerScreen() {
         <FlatList
           data={getCurrentStepData()}
           style={styles.optionsList}
-          keyExtractor={(item) => item.id || item.name}
+          keyExtractor={(item) => String(item.id) || item.name}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.optionItem}
