@@ -6,10 +6,11 @@
 
 import flipPaymentGateway from './flipPaymentGateway';
 import xenditPaymentGateway from './xenditPaymentGateway'; // Xendit service
+import serverPaymentService from './serverPaymentService'; // Your server API
 import { PaymentMethod } from './paymentGatewayConfig';
 
 // Gateway provider types
-export type PaymentProvider = 'FLIP' | 'XENDIT';
+export type PaymentProvider = 'FLIP' | 'XENDIT' | 'SERVER';
 
 // Configuration for each provider
 const GATEWAY_CONFIG = {
@@ -83,6 +84,9 @@ class PaymentGatewayService {
 
         case 'XENDIT':
           return await this.createXenditPayment(request, paymentOptions);
+
+        case 'SERVER':
+          return await this.createServerPayment(request, paymentOptions);
 
         default:
           throw new Error(`Unsupported payment provider: ${provider}`);
@@ -188,6 +192,55 @@ class PaymentGatewayService {
       }
     } catch (error) {
       throw new Error(`Flip payment creation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create payment using your Server API
+   */
+  private async createServerPayment(
+    request: UnifiedPaymentRequest,
+    paymentOptions?: any
+  ): Promise<UnifiedPaymentResponse> {
+    try {
+      // Create payment data for your server
+      const paymentData = serverPaymentService.createPaymentDataFromOrder(
+        parseInt(request.orderId),
+        parseInt(request.customerEmail?.split('@')[0] || '1'), // Extract user ID from email or default to 1
+        request.amount,
+        request.paymentMethod,
+        paymentOptions?.provider || 'Xendit',
+        paymentOptions?.channel || 'ewallet'
+      );
+
+      // Add additional fields if available
+      if (paymentOptions?.bankCode) {
+        paymentData.payment_method = paymentOptions.bankCode;
+      }
+
+      const serverResponse = await serverPaymentService.createPayment(paymentData);
+
+      if (!serverResponse.success || !serverResponse.data) {
+        throw new Error(serverResponse.error || 'Server payment creation failed');
+      }
+
+      const paymentDataResponse = serverResponse.data;
+
+      return {
+        provider: 'SERVER',
+        paymentId: paymentDataResponse.payment_id || request.orderId,
+        status: this.mapServerStatus(paymentDataResponse.status),
+        paymentData: paymentDataResponse,
+        paymentUrl: paymentDataResponse.payment_url,
+        qrString: paymentDataResponse.qr_string,
+        accountNumber: paymentDataResponse.account_number,
+        bankCode: paymentDataResponse.bank_code,
+        amount: paymentDataResponse.amount,
+        expiresAt: paymentDataResponse.expires_at,
+        fees: paymentDataResponse.fees,
+      };
+    } catch (error) {
+      throw new Error(`Server payment creation failed: ${error.message}`);
     }
   }
 
@@ -324,6 +377,16 @@ class PaymentGatewayService {
             paymentData: xenditStatus,
           };
 
+        case 'SERVER':
+          // Use server payment status check
+          const serverStatus = await serverPaymentService.getPaymentStatus(paymentId);
+
+          return {
+            isPaid: serverStatus.isPaid,
+            status: serverStatus.status,
+            paymentData: serverStatus.paymentData,
+          };
+
         default:
           throw new Error(`Unsupported provider for status check: ${provider}`);
       }
@@ -394,19 +457,46 @@ class PaymentGatewayService {
   }
 
   /**
+   * Map server status to unified status
+   */
+  private mapServerStatus(serverStatus: string): 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED' {
+    switch (serverStatus) {
+      case 'PENDING':
+      case 'ACTIVE':
+      case 'AWAITING_PAYMENT':
+        return 'PENDING';
+      case 'PAID':
+      case 'SUCCEEDED':
+      case 'COMPLETED':
+      case 'SETTLED':
+        return 'PAID';
+      case 'EXPIRED':
+        return 'EXPIRED';
+      case 'FAILED':
+      case 'CANCELLED':
+      case 'REJECTED':
+        return 'FAILED';
+      default:
+        return 'PENDING';
+    }
+  }
+
+  /**
    * Get provider health status
    */
   async getProviderHealth(): Promise<{
     flip: { status: 'healthy' | 'degraded' | 'down'; responseTime?: number };
     xendit: { status: 'healthy' | 'degraded' | 'down'; responseTime?: number };
+    server: { status: 'healthy' | 'degraded' | 'down'; responseTime?: number };
   }> {
     const startTime = Date.now();
 
     try {
       // Simple health check for each provider
-      const [flipHealth, xenditHealth] = await Promise.allSettled([
+      const [flipHealth, xenditHealth, serverHealth] = await Promise.allSettled([
         this.checkFlipHealth(),
         this.checkXenditHealth(),
+        this.checkServerHealth(),
       ]);
 
       return {
@@ -416,11 +506,15 @@ class PaymentGatewayService {
         xendit: xenditHealth.status === 'fulfilled'
           ? { status: 'healthy', responseTime: Date.now() - startTime }
           : { status: 'down' },
+        server: serverHealth.status === 'fulfilled'
+          ? { status: 'healthy', responseTime: Date.now() - startTime }
+          : { status: 'down' },
       };
     } catch (error) {
       return {
         flip: { status: 'down' },
         xendit: { status: 'down' },
+        server: { status: 'down' },
       };
     }
   }
@@ -437,6 +531,16 @@ class PaymentGatewayService {
   private async checkXenditHealth(): Promise<boolean> {
     // Add a simple health check for Xendit if available
     return true;
+  }
+
+  private async checkServerHealth(): Promise<boolean> {
+    try {
+      // Simple health check for server API
+      await serverPaymentService.getServerURL();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

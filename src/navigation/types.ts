@@ -55,6 +55,7 @@ export type RootStackParamList = {
     transactionType?: string;
     timestamp?: string;
   };
+  OrderDetail: { orderId: string };
 };
 
 export type AuthStackParamList = {
@@ -81,12 +82,12 @@ export type MainTabParamList = {
   Home: undefined;
   Promo: undefined;
   Services: undefined;
-  Activity: undefined;
+  Activity: { refresh?: boolean } | undefined;
   Profile: undefined;
 };
 
 export type ActivityStackParamList = {
-  ActivityScreen: undefined;
+  ActivityScreen: { refresh?: boolean } | undefined;
   Checkout: { orderId?: string; orderName?: string } | undefined;
   Cart: undefined;
   PaymentMethodSelection: {

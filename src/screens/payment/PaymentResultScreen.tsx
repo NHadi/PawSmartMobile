@@ -181,20 +181,25 @@ export default function PaymentResultScreen() {
 
       {/* Bottom Buttons */}
       <View style={styles.bottomSection}>
-        {success ? (
-          <>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleViewOrder}>
-              <Text style={styles.primaryButtonText}>Lihat Detail</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelOrderButton} onPress={() => navigation.navigate('Home' as any)}>
-              <Text style={styles.cancelOrderText}>Cancel Pesanan</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity style={styles.primaryButton} onPress={handleRetry}>
-            <Text style={styles.primaryButtonText}>Kembali</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => {
+            // If payment failed, refresh activity data when going back
+            if (!success) {
+              // Navigate back to Activity screen with refresh trigger
+              navigation.navigate('Activity' as any, { refresh: true });
+            } else {
+              // For successful payments, go to order detail
+              if (orderId) {
+                navigation.navigate('OrderDetail', { orderId: orderId.toString() });
+              } else {
+                navigation.navigate('Home' as any);
+              }
+            }
+          }}
+        >
+          <Text style={styles.primaryButtonText}>OK</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

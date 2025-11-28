@@ -409,9 +409,12 @@ export default function EwalletPaymentScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Manual Check and Done Button */}
+        {/* OK Button */}
         <TouchableOpacity
-          style={styles.checkButton}
+          style={[
+            styles.okButton,
+            paymentStatus === 'checking' && styles.okButtonDisabled
+          ]}
           onPress={async () => {
             setPaymentStatus('checking');
             await checkPaymentStatus();
@@ -422,46 +425,33 @@ export default function EwalletPaymentScreen() {
               return;
             }
 
-            // Payment still pending
-            Alert.alert(
-              'Pembayaran Masih Diproses',
-              'Pembayaran Anda masih dalam proses verifikasi. Anda dapat melihat status pesanan di halaman Aktivitas.',
-              [
-                {
-                  text: 'Tetap di Sini',
-                  style: 'cancel'
-                },
-                {
-                  text: 'Lihat Aktivitas',
-                  onPress: () => {
-                    navigation.dispatch(
-                      CommonActions.reset({
-                        index: 0,
-                        routes: [
-                          {
-                            name: 'Main',
-                            state: {
-                              routes: [
-                                { name: 'Home' },
-                                { name: 'Promo' },
-                                { name: 'Services' },
-                                { name: 'Activity' },
-                                { name: 'Profile' }
-                              ],
-                              index: 3, // Activity tab
-                            },
-                          }
-                        ],
-                      })
-                    );
+            // Payment still pending, navigate to Activity screen
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: 'Main',
+                    state: {
+                      routes: [
+                        { name: 'Home' },
+                        { name: 'Promo' },
+                        { name: 'Services' },
+                        { name: 'Activity', params: { refresh: true } },
+                        { name: 'Profile' }
+                      ],
+                      index: 3, // Activity tab
+                    },
                   }
-                }
-              ]
+                ],
+              })
             );
           }}
+          disabled={paymentStatus === 'checking'}
         >
-          <MaterialIcons name="refresh" size={20} color={Colors.primary.main} />
-          <Text style={styles.checkButtonText}>Cek Status & Selesai</Text>
+          <Text style={styles.okButtonText}>
+            {paymentStatus === 'checking' ? 'Memproses...' : 'OK'}
+          </Text>
         </TouchableOpacity>
 
         {/* Loading indicator */}

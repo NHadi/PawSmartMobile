@@ -254,23 +254,65 @@ export default function UniversalSuccessScreen() {
         {/* Action Buttons */}
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={handleViewDetail}
+          onPress={() => {
+            setIsNavigationAllowed(true);
+            // Navigate to order detail for successful payments
+            if (orderId) {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: 'Main',
+                      state: {
+                        routes: [
+                          {
+                            name: 'Home',
+                            state: {
+                              routes: [
+                                { name: 'HomeScreen' },
+                                { name: 'OrderDetail', params: { orderId: orderId.toString() } }
+                              ],
+                              index: 1
+                            }
+                          },
+                          { name: 'Promo' },
+                          { name: 'Services' },
+                          { name: 'Activity' },
+                          { name: 'Profile' }
+                        ],
+                        index: 0, // Force Home tab to be active
+                      },
+                    }
+                  ],
+                })
+              );
+            } else {
+              // If no orderId, go to Activity tab with refresh
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: 'Main',
+                      state: {
+                        routes: [
+                          { name: 'Home' },
+                          { name: 'Promo' },
+                          { name: 'Services' },
+                          { name: 'Activity', params: { refresh: true } },
+                          { name: 'Profile' }
+                        ],
+                        index: 3, // Activity tab
+                      },
+                    }
+                  ],
+                })
+              );
+            }
+          }}
         >
-          <Text style={styles.primaryButtonText}>Lihat Detail</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={handleCancelOrder}
-        >
-          <Text style={styles.cancelButtonText}>Cancel Pesanan</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.homeButton}
-          onPress={handleGoHome}
-        >
-          <Text style={styles.homeButtonText}>Kembali ke Beranda</Text>
+          <Text style={styles.primaryButtonText}>OK</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

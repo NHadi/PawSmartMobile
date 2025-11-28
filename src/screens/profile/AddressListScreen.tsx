@@ -18,6 +18,7 @@ import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ProfileStackParamList } from '../../navigation/types';
 import standaloneAddressService from '../../services/address/standaloneAddressService';
+import { isAuthError } from '../../utils/authErrorHandler';
 import defaultAddressService from '../../services/address/defaultAddressService';
 
 type NavigationProp = StackNavigationProp<ProfileStackParamList, 'MyAddress'>;
@@ -76,8 +77,8 @@ export default function ProfileAddressListScreen() {
       console.log('✅ Profile AddressList - Successfully loaded', addresses.length, 'addresses');
     } catch (error) {
       console.error('❌ Profile AddressList - Failed to load addresses:', error);
-      // Show user-friendly error
-      if (!isRefreshing) {
+      // Show user-friendly error, but not for auth errors (handled by authErrorHandler)
+      if (!isRefreshing && !isAuthError(error)) {
         Alert.alert('Error', 'Gagal memuat alamat. Silakan coba lagi.');
       }
     } finally {

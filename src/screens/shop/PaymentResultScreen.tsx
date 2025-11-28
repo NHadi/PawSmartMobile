@@ -293,30 +293,20 @@ export default function PaymentResultScreen() {
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-          {status === 'success' ? (
-            <>
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={handleViewDetails}
-              >
-                <Text style={styles.primaryButtonText}>Lihat Detail</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.secondaryButton}
-                onPress={() => setShowCancelModal(true)}
-              >
-                <Text style={styles.secondaryButtonText}>Cancel Order</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={handleBack}
-            >
-              <Text style={styles.primaryButtonText}>Kembali</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => {
+              // If payment failed, navigate to Activity screen with refresh trigger
+              if (status === 'failed') {
+                navigation.navigate('Activity' as any, { refresh: true });
+              } else {
+                // For successful payments, navigate to order details
+                handleViewDetails();
+              }
+            }}
+          >
+            <Text style={styles.primaryButtonText}>OK</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 

@@ -236,14 +236,18 @@ function ServicesNavigator() {
   );
 }
 
-function ActivityNavigator() {
+function ActivityNavigator({ route }: { route?: any }) {
   return (
     <ActivityStack.Navigator
       screenOptions={{
         headerShown: false,
       }}
     >
-      <ActivityStack.Screen name="ActivityScreen" component={ActivityScreen} />
+      <ActivityStack.Screen
+        name="ActivityScreen"
+        component={ActivityScreen}
+        initialParams={route?.params}
+      />
       <ActivityStack.Screen name="Checkout" component={CheckoutScreen} />
       <ActivityStack.Screen name="Cart" component={CartScreen} />
       <ActivityStack.Screen name="PaymentResult" component={PaymentResultScreen} />
@@ -264,7 +268,10 @@ function TabNavigator() {
       <Tab.Screen name="Home" component={HomeNavigator} />
       <Tab.Screen name="Promo" component={PromoStack} />
       <Tab.Screen name="Services" component={ServicesNavigator} />
-      <Tab.Screen name="Activity" component={ActivityNavigator} />
+      <Tab.Screen
+        name="Activity"
+        component={({ route }: { route: any }) => <ActivityNavigator route={route} />}
+      />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   );
@@ -318,6 +325,14 @@ export default function AppNavigator() {
               options={{
                 presentation: 'modal',
                 gestureEnabled: false,
+              }}
+            />
+            <Stack.Screen
+              name="OrderDetail"
+              component={OrderDetailScreen}
+              options={{
+                headerShown: true,
+                title: 'Detail Pesanan',
               }}
             />
             <Stack.Screen
