@@ -23,11 +23,20 @@ import PetDoctorScreen from '../screens/services/PetDoctorScreen';
 import DoctorHomeServiceScreen from '../screens/services/DoctorHomeServiceScreen';
 import DoctorWalkInScreen from '../screens/services/DoctorWalkInScreen';
 import DoctorDetailScreen from '../screens/services/DoctorDetailScreen';
+import DoctorSelectionScreen from '../screens/services/DoctorSelectionScreen';
+import DoctorBookingCheckoutScreen from '../screens/services/DoctorBookingCheckoutScreen';
 import PetSelectionScreen from '../screens/services/PetSelectionScreen';
 import GroomingScreen from '../screens/services/GroomingScreen';
 import GroomingWalkInScreen from '../screens/services/GroomingWalkInScreen';
 import GroomingDetailScreen from '../screens/services/GroomingDetailScreen';
+import GroomingBookingCheckoutScreen from '../screens/services/GroomingBookingCheckoutScreen';
 import GroomingHomeServiceScreen from '../screens/services/GroomingHomeServiceScreen';
+import HotelScreen from '../screens/services/HotelScreen';
+import HotelSearchScreen from '../screens/services/HotelSearchScreen';
+import HotelListScreen from '../screens/services/HotelListScreen';
+import HotelDetailScreen from '../screens/services/HotelDetailScreen';
+import HotelRoomDetailScreen from '../screens/services/HotelRoomDetailScreen';
+import HotelBookingScreen from '../screens/services/HotelBookingScreen';
 import ActivityScreen from '../screens/activity/ActivityScreen';
 
 // Pet Management Screens - Using original UI screens
@@ -221,6 +230,8 @@ function ServicesNavigator() {
       <ServicesStack.Screen name="DoctorHomeService" component={DoctorHomeServiceScreen} />
       <ServicesStack.Screen name="DoctorWalkIn" component={DoctorWalkInScreen} />
       <ServicesStack.Screen name="DoctorDetail" component={DoctorDetailScreen} />
+      <ServicesStack.Screen name="DoctorSelection" component={DoctorSelectionScreen} />
+      <ServicesStack.Screen name="DoctorBookingCheckout" component={DoctorBookingCheckoutScreen} />
       <ServicesStack.Screen name="PetSelection" component={PetSelectionScreen} />
       <ServicesStack.Screen name="BookingDoctor">
         {() => <PlaceholderScreen title="Booking Doctor" />}
@@ -229,9 +240,16 @@ function ServicesNavigator() {
       <ServicesStack.Screen name="GroomingWalkIn" component={GroomingWalkInScreen} />
       <ServicesStack.Screen name="GroomingHomeService" component={GroomingHomeServiceScreen} />
       <ServicesStack.Screen name="GroomingDetail" component={GroomingDetailScreen} />
+      <ServicesStack.Screen name="GroomingBookingCheckout" component={GroomingBookingCheckoutScreen} />
       <ServicesStack.Screen name="BookingGrooming">
         {() => <PlaceholderScreen title="Booking Grooming" />}
       </ServicesStack.Screen>
+      <ServicesStack.Screen name="Hotel" component={HotelScreen} />
+      <ServicesStack.Screen name="HotelSearch" component={HotelSearchScreen} />
+      <ServicesStack.Screen name="HotelList" component={HotelListScreen} />
+      <ServicesStack.Screen name="HotelDetail" component={HotelDetailScreen} />
+      <ServicesStack.Screen name="HotelRoomDetail" component={HotelRoomDetailScreen} />
+      <ServicesStack.Screen name="HotelBooking" component={HotelBookingScreen} />
     </ServicesStack.Navigator>
   );
 }

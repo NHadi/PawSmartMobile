@@ -63,7 +63,7 @@ export default function ServicesScreen() {
       icon: require('../../../assets/services/hotel.png'),
       mascot: require('../../../assets/services/Hotel Maskot.png'),
       color: '#5CB3FF',
-      onPress: () => Alert.alert('Hotel', 'Fitur Pet Hotel akan segera hadir!'),
+      onPress: () => navigation.navigate('Hotel'),
     },
     {
       id: 'pengasuh',

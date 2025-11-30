@@ -80,8 +80,15 @@ export default function GroomingDetailScreen() {
   };
 
   const handleBooking = () => {
-    // Navigate to order summary or booking confirmation
-    };
+    navigation.navigate('GroomingBookingCheckout', {
+      groomingId: groomingId,
+      salonName: 'Pets Corner',
+      date: selectedDate,
+      timeSlot: mockTimeSlots.find(s => s.id === selectedTimeSlot)?.time || '11.00',
+      petId: selectedPet.id,
+      serviceType: 'walkIn',
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>

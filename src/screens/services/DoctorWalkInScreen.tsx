@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  TextInput,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - Spacing.lg * 2 - Spacing.md) / 2;
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'DoctorWalkIn'>;
 
@@ -49,296 +53,282 @@ const mockClinics: Clinic[] = [
     location: 'Karet, Jakarta Pusat',
     distance: '3.4 km',
     image: require('../../../assets/product-placeholder.jpg'),
-    isOpen24: true,
+    isOpen24: false,
   },
   {
     id: '3',
     name: 'Hinsdale Hospital',
     type: 'Klinik Hewan',
-    rating: 4.9,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
+    rating: 4.8,
+    location: 'Tebet, Jakarta Selatan',
+    distance: '2.1 km',
+    image: require('../../../assets/product-placeholder.jpg'),
+    isOpen24: true,
+  },
+  {
+    id: '4',
+    name: 'Pet Care Clinic',
+    type: 'Klinik Hewan',
+    rating: 4.7,
+    location: 'Menteng, Jakarta Pusat',
+    distance: '4.2 km',
     image: require('../../../assets/product-placeholder.jpg'),
     isOpen24: false,
   },
 ];
 
+// Theme colors
+const THEME = {
+  primary: Colors.primary.main,
+  background: Colors.background.primary,
+  backgroundSecondary: Colors.background.secondary,
+  textPrimary: Colors.text.primary,
+  textSecondary: Colors.text.secondary,
+  border: Colors.border.light,
+  white: '#FFFFFF',
+};
+
 export default function DoctorWalkInScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [selectedFilter, setSelectedFilter] = useState('Terdekat');
 
-  const filters = ['Terdekat', 'Populer', 'Harga'];
-
-  const renderClinic = (clinic: Clinic) => (
+  const renderClinicCard = (clinic: Clinic, index: number) => (
     <TouchableOpacity
       key={clinic.id}
-      style={styles.clinicCard}
+      style={[styles.clinicCard, index % 2 === 0 ? styles.cardLeft : styles.cardRight]}
       onPress={() => navigation.navigate('DoctorDetail', { doctorId: clinic.id })}
+      activeOpacity={0.7}
     >
       <View style={styles.clinicImageContainer}>
-        <Image source={clinic.image} style={styles.clinicImage} />
+        <Image source={clinic.image} style={styles.clinicImage} resizeMode="cover" />
         {clinic.isOpen24 && (
           <View style={styles.badge24}>
-            <MaterialIcons name="access-time" size={12} color={Colors.text.white} />
-            <Text style={styles.badge24Text}>24/7</Text>
+            <Text style={styles.badge24Text}>24H</Text>
           </View>
         )}
       </View>
-      
+
       <View style={styles.clinicInfo}>
-        <Text style={styles.clinicName}>{clinic.name}</Text>
+        <Text style={styles.clinicName} numberOfLines={1}>{clinic.name}</Text>
         <Text style={styles.clinicType}>{clinic.type}</Text>
-        <View style={styles.clinicMeta}>
-          <View style={styles.rating}>
-            <MaterialIcons name="star" size={16} color="#FFD700" />
-            <Text style={styles.ratingText}>{clinic.rating}</Text>
-          </View>
-          <Text style={styles.location}>{clinic.location}</Text>
-          <Text style={styles.distance}>{clinic.distance}</Text>
+
+        <View style={styles.ratingRow}>
+          <MaterialIcons name="star" size={14} color="#FFB800" />
+          <Text style={styles.ratingText}>{clinic.rating}</Text>
         </View>
+
+        <Text style={styles.locationText} numberOfLines={1}>{clinic.location}</Text>
+        <Text style={styles.distanceText}>{clinic.distance}</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialIcons name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dokter - Walk In</Text>
-        <TouchableOpacity style={styles.searchButton}>
-          <MaterialIcons name="search" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Location */}
-        <View style={styles.locationSection}>
-          <Text style={styles.locationLabel}>Lokasi</Text>
-          <View style={styles.locationContainer}>
-            <MaterialIcons name="location-on" size={20} color={Colors.text.secondary} />
-            <Text style={styles.locationText}>Tebet, Jakarta Selatan</Text>
-          </View>
-        </View>
-
-        {/* Recommendation Title */}
-        <Text style={styles.recommendationTitle}>Rekomendasi Klinik Untuk Kamu</Text>
-
-        {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
-          <View style={styles.filterTabs}>
-            {filters.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterTab,
-                  selectedFilter === filter && styles.filterTabActive
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-              >
-                <Text style={[
-                  styles.filterTabText,
-                  selectedFilter === filter && styles.filterTabTextActive
-                ]}>
-                  {filter}
-                  {filter === 'Harga' && (
-                    <MaterialIcons name="keyboard-arrow-down" size={16} color={Colors.primary.main} />
-                  )}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          <TouchableOpacity style={styles.filterButton}>
-            <MaterialIcons name="tune" size={20} color={Colors.text.secondary} />
-            <Text style={styles.filterButtonText}>Filter</Text>
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.white} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="chevron-left" size={28} color={THEME.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Dokter - Walk In</Text>
+          <TouchableOpacity style={styles.searchButton}>
+            <Ionicons name="search" size={22} color={THEME.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        {/* Clinic Grid */}
-        <View style={styles.clinicsGrid}>
-          {mockClinics.map(renderClinic)}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Location Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Lokasi</Text>
+            <View style={styles.locationCard}>
+              <Ionicons name="location-outline" size={18} color={THEME.textSecondary} />
+              <Text style={styles.locationCardText}>Tebet, Jakarta Selatan</Text>
+            </View>
+          </View>
+
+          {/* Promo Banner */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Dapatkan Promonya</Text>
+            <View style={styles.promoBanner}>
+              <Image
+                source={require('../../../assets/Doctor Maskot.png')}
+                style={styles.promoImage}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+
+          {/* Clinic Recommendations */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Rekomendasi Klinik Untuk Kamu</Text>
+
+            <View style={styles.clinicsGrid}>
+              {mockClinics.map((clinic, index) => renderClinicCard(clinic, index))}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: THEME.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.base,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: THEME.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: THEME.border,
   },
   backButton: {
-    padding: Spacing.sm,
+    padding: Spacing.xs,
   },
   headerTitle: {
     flex: 1,
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
+    color: THEME.textPrimary,
     textAlign: 'center',
   },
   searchButton: {
-    padding: Spacing.sm,
+    padding: Spacing.xs,
   },
-  locationSection: {
-    paddingHorizontal: Spacing.base,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Spacing.xl,
+  },
+  section: {
+    paddingHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
-    marginBottom: Spacing.xl,
   },
-  locationLabel: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationText: {
+  sectionTitle: {
     fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    marginLeft: Spacing.sm,
+    fontFamily: Typography.fontFamily.bold,
+    color: THEME.textPrimary,
+    marginBottom: Spacing.md,
   },
-  recommendationTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.lg,
-    paddingHorizontal: Spacing.base,
-  },
-  filterContainer: {
+  locationCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
-    paddingHorizontal: Spacing.base,
-  },
-  filterTabs: {
-    flexDirection: 'row',
+    backgroundColor: THEME.backgroundSecondary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
     gap: Spacing.sm,
   },
-  filterTab: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-  },
-  filterTabActive: {
-    backgroundColor: Colors.primary.main,
-    borderColor: Colors.primary.main,
-  },
-  filterTabText: {
+  locationCardText: {
     fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
   },
-  filterTabTextActive: {
-    color: Colors.text.white,
+  promoBanner: {
+    width: '100%',
+    height: 160,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    backgroundColor: '#00B4D8',
   },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background.tertiary,
-  },
-  filterButtonText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    marginLeft: Spacing.xs,
+  promoImage: {
+    width: '100%',
+    height: '100%',
   },
   clinicsGrid: {
-    gap: Spacing.md,
-    paddingHorizontal: Spacing.base,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   clinicCard: {
-    backgroundColor: Colors.background.primary,
+    width: CARD_WIDTH,
+    backgroundColor: THEME.white,
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: Colors.shadow.main,
+    marginBottom: Spacing.md,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardLeft: {
+    marginRight: Spacing.md / 2,
+  },
+  cardRight: {
+    marginLeft: Spacing.md / 2,
   },
   clinicImageContainer: {
     position: 'relative',
+    width: '100%',
+    height: 100,
   },
   clinicImage: {
     width: '100%',
-    height: 150,
+    height: '100%',
   },
   badge24: {
     position: 'absolute',
     top: Spacing.sm,
     left: Spacing.sm,
-    backgroundColor: Colors.error.main,
+    backgroundColor: '#FF3B30',
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+    paddingVertical: 2,
   },
   badge24Text: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.text.white,
-    fontFamily: Typography.fontFamily.medium,
+    fontSize: 10,
+    fontFamily: Typography.fontFamily.bold,
+    color: THEME.white,
   },
   clinicInfo: {
     padding: Spacing.md,
   },
   clinicName: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
+    color: THEME.textPrimary,
+    marginBottom: 2,
   },
   clinicType: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.primary.main,
-    marginBottom: Spacing.sm,
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.primary,
+    marginBottom: Spacing.xs,
   },
-  clinicMeta: {
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 2,
+    marginBottom: Spacing.xs,
   },
   ratingText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.primary,
+    fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.medium,
+    color: THEME.textPrimary,
   },
-  location: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
+  locationText: {
+    fontSize: 11,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
+    marginBottom: 2,
   },
-  distance: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    marginLeft: 'auto',
+  distanceText: {
+    fontSize: 11,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
   },
 });

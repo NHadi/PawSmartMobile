@@ -5,44 +5,35 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Dimensions,
   Image,
-  FlatList,
   Platform,
-  Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
 
-type NavigationProp = StackNavigationProp<ServicesStackParamList, 'GroomingHomeService'>;
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - Spacing.lg * 2 - Spacing.md) / 2;
 
-interface BookingData {
-  selectedDate: string;
-  customerName: string;
-  customerAddress: string;
-}
+type NavigationProp = StackNavigationProp<ServicesStackParamList, 'GroomingHomeService'>;
 
 interface Groomer {
   id: string;
   name: string;
   type: string;
   rating: number;
-  price: number;
+  price: string;
   experience: string;
   location: string;
   image: any;
-}
-
-interface HistoryItem {
-  type: string;
-  groomer: string;
-  date: string;
 }
 
 const mockGroomers: Groomer[] = [
@@ -51,8 +42,8 @@ const mockGroomers: Groomer[] = [
     name: 'Michelle Andriani',
     type: 'Groomer',
     rating: 4.9,
-    price: 90000,
-    experience: '2th Pengalaman',
+    price: 'Rp90.000',
+    experience: '2th Perjalanan',
     location: 'Jakarta Timur',
     image: require('../../../assets/product-placeholder.jpg'),
   },
@@ -61,8 +52,8 @@ const mockGroomers: Groomer[] = [
     name: 'Michelle Andriani',
     type: 'Groomer',
     rating: 4.9,
-    price: 90000,
-    experience: '2th Pengalaman',
+    price: 'Rp90.000',
+    experience: '2th Perjalanan',
     location: 'Jakarta Timur',
     image: require('../../../assets/product-placeholder.jpg'),
   },
@@ -70,580 +61,361 @@ const mockGroomers: Groomer[] = [
     id: '3',
     name: 'Michelle Andriani',
     type: 'Groomer',
-    rating: 4.9,
-    price: 90000,
-    experience: '2th Pengalaman',
-    location: 'Jakarta Timur',
+    rating: 4.8,
+    price: 'Rp85.000',
+    experience: '3th Perjalanan',
+    location: 'Jakarta Selatan',
     image: require('../../../assets/product-placeholder.jpg'),
   },
   {
     id: '4',
     name: 'Michelle Andriani',
     type: 'Groomer',
-    rating: 4.9,
-    price: 90000,
-    experience: '2th Pengalaman',
-    location: 'Jakarta Timur',
+    rating: 4.7,
+    price: 'Rp80.000',
+    experience: '1th Perjalanan',
+    location: 'Jakarta Barat',
     image: require('../../../assets/product-placeholder.jpg'),
   },
 ];
 
+const THEME = {
+  primary: Colors.primary.main,
+  background: Colors.background.primary,
+  backgroundSecondary: Colors.background.secondary,
+  textPrimary: Colors.text.primary,
+  textSecondary: Colors.text.secondary,
+  border: Colors.border.light,
+  white: '#FFFFFF',
+};
+
 export default function GroomingHomeServiceScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [bookingData, setBookingData] = useState<BookingData>({
-    selectedDate: '',
-    customerName: 'Jaya M (+6282337709390)',
-    customerAddress: 'Jl. K.H. Mas Mansyur No. 8A, RT.10/RW.6, Karet Tengsin, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10220.',
-  });
+  const [selectedDate, setSelectedDate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showGroomerList, setShowGroomerList] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('Terkait');
-  const [historyItems] = useState<HistoryItem[]>([
-    { type: 'Groomer', groomer: 'Michelle Andriani', date: 'Jumat, 9 May 2025' },
-    { type: 'Groomer', groomer: 'Jasmine Putri', date: 'Jumat, 9 May 2025' },
-  ]);
 
-  const filters = ['Terkait', 'Terlaris', 'Harga'];
+  const customerName = 'Alan Syahlan (+6282337709390)';
+  const customerAddress = 'Jl. K.H. Mas Mansyur No. 8A, RT.10/RW.6, Karet Tengsin, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10220.';
 
   const handleDatePicker = () => {
     setShowDatePicker(true);
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || date;
+  const onDateChange = (event: any, selectedDateValue?: Date) => {
+    const currentDate = selectedDateValue || date;
     setShowDatePicker(Platform.OS === 'ios');
     setDate(currentDate);
-    
-    // Format date to DD MMM YYYY
+
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     const formatted = `${currentDate.getDate()} ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-    setBookingData({ ...bookingData, selectedDate: formatted });
+    setSelectedDate(formatted);
   };
 
-  const handleSearchGroomer = () => {
-    if (!bookingData.selectedDate) {
-      Alert.alert('Pilih Tanggal', 'Silakan pilih tanggal terlebih dahulu');
-      return;
-    }
-    setShowGroomerList(true);
+  const handleGroomerPress = (groomer: Groomer) => {
+    navigation.navigate('GroomingDetail', { groomingId: groomer.id });
   };
 
-  const handleDeleteHistory = (type: string, groomer: string) => {
-    };
+  const renderGroomerCard = (groomer: Groomer, index: number) => (
+    <TouchableOpacity
+      key={groomer.id}
+      style={[styles.groomerCard, index % 2 === 0 ? styles.cardLeft : styles.cardRight]}
+      onPress={() => handleGroomerPress(groomer)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.groomerImageContainer}>
+        <Image source={groomer.image} style={styles.groomerImage} resizeMode="cover" />
+      </View>
 
-  const handleAddressEdit = () => {
-    Alert.alert('Edit Address', 'Edit alamat akan diimplementasikan');
-  };
+      <View style={styles.groomerInfo}>
+        <Text style={styles.groomerName} numberOfLines={1}>{groomer.name}</Text>
+        <Text style={styles.groomerType} numberOfLines={1}>{groomer.type}</Text>
 
-  const renderGroomerCard = ({ item, index }: { item: Groomer; index: number }) => {
-    const isLeftColumn = index % 2 === 0;
-    return (
-      <TouchableOpacity 
-        style={[styles.groomerCard, isLeftColumn && styles.groomerCardLeft]}
-        onPress={() => {
-          // Navigate to groomer detail or booking
-          }}
-      >
-        <Image source={item.image} style={styles.groomerImage} />
-        
-        <View style={styles.groomerInfo}>
-          <Text style={styles.groomerName}>{item.name}</Text>
-          <Text style={styles.groomerType}>{item.type}</Text>
-          
-          <View style={styles.groomerMeta}>
-            <View style={styles.rating}>
-              <MaterialIcons name="star" size={16} color="#FFD700" />
-              <Text style={styles.ratingText}>{item.rating}</Text>
-            </View>
-          </View>
-          
-          <Text style={styles.groomerPrice}>Rp {item.price.toLocaleString('id-ID')}</Text>
-          
-          <View style={styles.locationRow}>
-            <Text style={styles.experience}>{item.experience}</Text>
-            <Text style={styles.location}>{item.location}</Text>
-          </View>
+        <View style={styles.ratingRow}>
+          <MaterialIcons name="star" size={14} color="#FFB800" />
+          <Text style={styles.ratingText}>{groomer.rating}</Text>
         </View>
-      </TouchableOpacity>
-    );
-  };
 
-  if (showGroomerList) {
-    return (
+        <Text style={styles.priceText}>{groomer.price}</Text>
+
+        <View style={styles.locationRow}>
+          <Text style={styles.experienceText}>{groomer.experience}</Text>
+          <Text style={styles.locationText}>{groomer.location}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.white} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
-            onPress={() => setShowGroomerList(false)}
+            onPress={() => navigation.goBack()}
           >
-            <MaterialIcons name="arrow-back" size={24} color={Colors.text.primary} />
+            <MaterialIcons name="chevron-left" size={28} color={THEME.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Salon - Home Service</Text>
           <TouchableOpacity style={styles.searchButton}>
-            <MaterialIcons name="search" size={24} color={Colors.text.primary} />
+            <Ionicons name="search" size={22} color={THEME.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        {/* Location */}
-        <View style={styles.locationSection}>
-          <MaterialIcons name="location-on" size={20} color={Colors.text.secondary} />
-          <Text style={styles.locationText}>Tebet, Jakarta Selatan</Text>
-        </View>
-
-        {/* Title */}
-        <Text style={styles.recommendationTitle}>Rekomendasi Groomer Untuk Kamu</Text>
-
-        {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
-          <View style={styles.filterTabs}>
-            {filters.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterTab,
-                  selectedFilter === filter && styles.filterTabActive
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-              >
-                <Text style={[
-                  styles.filterTabText,
-                  selectedFilter === filter && styles.filterTabTextActive
-                ]}>
-                  {filter}
-                  {filter === 'Harga' && (
-                    <MaterialIcons name="keyboard-arrow-down" size={16} color={Colors.primary.main} />
-                  )}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          <TouchableOpacity style={styles.filterButton}>
-            <MaterialIcons name="tune" size={20} color={Colors.text.secondary} />
-            <Text style={styles.filterButtonText}>Filter</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Groomer Grid */}
-        <FlatList
-          data={mockGroomers}
-          renderItem={renderGroomerCard}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.groomerList}
-          columnWrapperStyle={styles.groomerRow}
+        <ScrollView
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          contentContainerStyle={styles.scrollContent}
         >
-          <MaterialIcons name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Salon - Home Service</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Customer Info Section */}
-        <View style={styles.section}>
-          <View style={styles.customerInfo}>
-            <Text style={styles.customerName}>{bookingData.customerName}</Text>
-            <View style={styles.addressContainer}>
-              <Text style={styles.customerAddress}>{bookingData.customerAddress}</Text>
-              <TouchableOpacity 
-                style={styles.editAddressButton}
-                onPress={handleAddressEdit}
-              >
-                <MaterialIcons name="edit" size={20} color={Colors.primary.main} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Date Selection */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.dateSelector} onPress={handleDatePicker}>
-            <Text style={[styles.dateText, !bookingData.selectedDate && styles.dateTextPlaceholder]}>
-              {bookingData.selectedDate || 'Pilih Tanggal'}
-            </Text>
-            <MaterialIcons name="calendar-today" size={20} color={Colors.text.secondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Button */}
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={[styles.searchGroomerButton, !bookingData.selectedDate && styles.searchGroomerButtonDisabled]}
-            onPress={handleSearchGroomer}
-            disabled={!bookingData.selectedDate}
-          >
-            <Text style={styles.searchGroomerButtonText}>Cari Salon Home Service</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* History Section */}
-        <View style={styles.section}>
-          <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Riwayat Pencarian</Text>
-            <TouchableOpacity>
-              <Text style={styles.clearHistoryText}>Hapus Riwayat</Text>
+          {/* Date Selection */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.dateSelector}
+              onPress={handleDatePicker}
+            >
+              <Text style={[styles.dateText, !selectedDate && styles.dateTextPlaceholder]}>
+                {selectedDate || 'Pilih Tanggal'}
+              </Text>
+              <MaterialIcons name="calendar-today" size={20} color={THEME.textSecondary} />
             </TouchableOpacity>
           </View>
-          
-          {historyItems.map((item, index) => (
-            <View key={index} style={styles.historyItem}>
-              <View style={styles.historyItemContent}>
-                <Text style={styles.historyItemTitle}>{item.type}</Text>
-                <Text style={styles.historyItemGroomer}>{item.groomer}</Text>
-                <Text style={styles.historyItemDate}>{item.date}</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.historyDeleteButton}
-                onPress={() => handleDeleteHistory(item.type, item.groomer)}
-              >
-                <MaterialIcons name="delete-outline" size={20} color={Colors.text.tertiary} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
 
-        {/* Promo Section */}
-        <View style={styles.section}>
-          <Text style={styles.promoTitle}>Dapatkan Promonya</Text>
-          <TouchableOpacity style={styles.promoCard}>
-            <Image
-              source={require('../../../assets/mascot-happy.png')}
-              style={styles.promoImage}
-              resizeMode="contain"
-            />
-            <View style={styles.promoContent}>
-              <Text style={styles.promoText}>
-                Nikmati layanan grooming terbaik dengan promo spesial!
-              </Text>
+          {/* Customer Info */}
+          <View style={styles.customerSection}>
+            <View style={styles.customerInfo}>
+              <View style={styles.customerHeader}>
+                <Text style={styles.customerName}>{customerName}</Text>
+              </View>
+              <View style={styles.addressContainer}>
+                <Text style={styles.customerAddress}>{customerAddress}</Text>
+                <TouchableOpacity style={styles.editAddressButton}>
+                  <MaterialIcons name="edit" size={18} color={THEME.primary} />
+                </TouchableOpacity>
+              </View>
             </View>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-      
-      {/* Date Picker Modal */}
-      {showDatePicker && (
-        <DateTimePicker
-          testID="dateTimePicker"
-          value={date}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onDateChange}
-          minimumDate={new Date()}
-        />
-      )}
-    </SafeAreaView>
+          </View>
+
+          {/* Promo Banner */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Dapatkan Promonya</Text>
+            <View style={styles.promoBanner}>
+              <Image
+                source={require('../../../assets/Grooming Maskot.png')}
+                style={styles.promoImage}
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+
+          {/* Groomer Recommendations */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Rekomendasi Groomer Untuk Kamu</Text>
+
+            <View style={styles.groomersGrid}>
+              {mockGroomers.map((groomer, index) => renderGroomerCard(groomer, index))}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Date Picker Modal */}
+        {showDatePicker && (
+          <DateTimePicker
+            testID="dateTimePicker"
+            value={date}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onDateChange}
+            minimumDate={new Date()}
+          />
+        )}
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: THEME.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.base,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: THEME.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: THEME.border,
   },
   backButton: {
-    padding: Spacing.sm,
+    padding: Spacing.xs,
   },
   headerTitle: {
     flex: 1,
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
+    color: THEME.textPrimary,
     textAlign: 'center',
   },
-  headerSpacer: {
-    width: 40,
-  },
   searchButton: {
-    padding: Spacing.sm,
+    padding: Spacing.xs,
   },
-  section: {
-    backgroundColor: Colors.background.primary,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
-  },
-  customerInfo: {
-    gap: Spacing.md,
-  },
-  customerName: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-  },
-  addressContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  customerAddress: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    lineHeight: 20,
+  scrollView: {
     flex: 1,
   },
-  editAddressButton: {
-    padding: Spacing.xs,
+  scrollContent: {
+    paddingBottom: Spacing.xl,
+  },
+  section: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bold,
+    color: THEME.textPrimary,
+    marginBottom: Spacing.md,
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: Colors.border.light,
-    borderRadius: BorderRadius.md,
+    borderColor: THEME.border,
+    borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.base,
-    backgroundColor: Colors.background.tertiary,
+    backgroundColor: THEME.white,
   },
   dateText: {
     fontSize: Typography.fontSize.base,
-    color: Colors.text.primary,
-    flex: 1,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textPrimary,
   },
   dateTextPlaceholder: {
-    color: Colors.text.tertiary,
+    color: THEME.textSecondary,
   },
-  searchGroomerButton: {
-    backgroundColor: Colors.primary.main,
-    borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
+  customerSection: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
   },
-  searchGroomerButtonText: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.white,
-  },
-  searchGroomerButtonDisabled: {
-    opacity: 0.5,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  historyTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-  },
-  clearHistoryText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.tertiary,
-  },
-  historyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
-  },
-  historyItemContent: {
-    flex: 1,
-  },
-  historyItemTitle: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-  },
-  historyItemGroomer: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.primary.main,
-    fontFamily: Typography.fontFamily.medium,
-  },
-  historyItemDate: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-  },
-  historyDeleteButton: {
-    padding: Spacing.sm,
-  },
-  promoTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-  },
-  promoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.tertiary,
+  customerInfo: {
+    backgroundColor: '#EEF6FF',
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.md,
   },
-  promoImage: {
-    width: 80,
-    height: 80,
-    marginRight: Spacing.md,
+  customerHeader: {
+    marginBottom: Spacing.sm,
   },
-  promoContent: {
+  customerName: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.semibold,
+    color: THEME.textPrimary,
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  customerAddress: {
     flex: 1,
-  },
-  promoText: {
     fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
     lineHeight: 20,
   },
-  locationSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-  },
-  locationText: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
+  editAddressButton: {
+    padding: Spacing.xs,
     marginLeft: Spacing.sm,
   },
-  recommendationTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-    paddingHorizontal: Spacing.base,
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.md,
+  promoBanner: {
+    width: '100%',
+    height: 160,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    backgroundColor: '#00B4D8',
   },
-  filterContainer: {
+  promoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  groomersGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.base,
-    marginBottom: Spacing.lg,
-  },
-  filterTabs: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  filterTab: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-  },
-  filterTabActive: {
-    backgroundColor: Colors.primary.main,
-    borderColor: Colors.primary.main,
-  },
-  filterTabText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-  },
-  filterTabTextActive: {
-    color: Colors.text.white,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background.tertiary,
-  },
-  filterButtonText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    marginLeft: Spacing.xs,
-  },
-  groomerList: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing.lg,
-  },
-  groomerRow: {
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   groomerCard: {
-    flex: 0.48,
-    backgroundColor: Colors.background.primary,
+    width: CARD_WIDTH,
+    backgroundColor: THEME.white,
     borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.md,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: Colors.shadow.main,
+    marginBottom: Spacing.md,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  groomerCardLeft: {
-    marginRight: Spacing.sm,
+  cardLeft: {
+    marginRight: Spacing.md / 2,
   },
-  groomerImage: {
+  cardRight: {
+    marginLeft: Spacing.md / 2,
+  },
+  groomerImageContainer: {
+    position: 'relative',
     width: '100%',
     height: 120,
   },
+  groomerImage: {
+    width: '100%',
+    height: '100%',
+  },
   groomerInfo: {
-    padding: Spacing.sm,
+    padding: Spacing.md,
   },
   groomerName: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
+    color: THEME.textPrimary,
+    marginBottom: 2,
   },
   groomerType: {
     fontSize: Typography.fontSize.xs,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.sm,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
+    marginBottom: Spacing.xs,
   },
-  groomerMeta: {
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 2,
+    marginBottom: Spacing.xs,
   },
   ratingText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.primary,
+    fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.medium,
+    color: THEME.textPrimary,
   },
-  groomerPrice: {
-    fontSize: Typography.fontSize.base,
+  priceText: {
+    fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bold,
-    color: Colors.primary.main,
-    marginBottom: Spacing.sm,
+    color: THEME.primary,
+    marginBottom: Spacing.xs,
   },
   locationRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  experience: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.text.secondary,
+  experienceText: {
+    fontSize: 10,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
   },
-  location: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.text.secondary,
+  locationText: {
+    fontSize: 10,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
   },
 });

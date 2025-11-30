@@ -209,13 +209,49 @@ export type ServicesStackParamList = {
   DoctorHomeService: undefined;
   DoctorWalkIn: undefined;
   DoctorDetail: { doctorId: string };
+  DoctorSelection: { clinicId?: string };
+  DoctorBookingCheckout: {
+    doctorId: string;
+    doctorName: string;
+    date: string;
+    timeSlot: string;
+    petId?: string;
+    complaint?: string;
+  };
   PetSelection: undefined;
   BookingDoctor: { doctorId: string; serviceType: 'homeService' | 'walkIn' };
   Grooming: undefined;
   GroomingWalkIn: undefined;
   GroomingHomeService: undefined;
   GroomingDetail: { groomingId: string };
+  GroomingBookingCheckout: {
+    groomingId: string;
+    salonName: string;
+    date: string;
+    timeSlot: string;
+    petId?: string;
+    serviceType: 'walkIn' | 'homeService';
+  };
   BookingGrooming: { groomingId: string; serviceType: 'homeService' | 'walkIn' };
+  // Hotel screens
+  Hotel: undefined;
+  HotelSearch: undefined;
+  HotelList: {
+    location?: string;
+    date?: string;
+    petType?: string;
+  };
+  HotelDetail: { hotelId: string };
+  HotelRoomDetail: { hotelId: string; roomId: string };
+  HotelBooking: {
+    hotelId: string;
+    hotelName: string;
+    roomId: string;
+    roomName: string;
+    checkInDate: string;
+    checkOutDate: string;
+    price: number;
+  };
 };
 
 export type ProfileStackParamList = {

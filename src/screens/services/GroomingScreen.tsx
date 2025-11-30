@@ -5,33 +5,41 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
-  Dimensions,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
 
-const { width } = Dimensions.get('window');
-
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'Grooming'>;
 
 type ServiceType = 'walkIn' | 'homeService' | null;
 
+const THEME = {
+  primary: Colors.primary.main,
+  background: Colors.background.primary,
+  backgroundSecondary: Colors.background.secondary,
+  textPrimary: Colors.text.primary,
+  textSecondary: Colors.text.secondary,
+  border: Colors.border.light,
+  white: '#FFFFFF',
+  yellow: '#F5A623',
+  blue: '#4A90D9',
+  green: '#4CAF50',
+};
+
 export default function GroomingScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [selectedService, setSelectedService] = useState<ServiceType>(null);
+  const [selectedService, setSelectedService] = useState<ServiceType>('walkIn');
 
   const handleContinue = () => {
     if (!selectedService) return;
-    
+
     if (selectedService === 'homeService') {
       navigation.navigate('GroomingHomeService');
     } else {
@@ -41,88 +49,81 @@ export default function GroomingScreen() {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#FFCC00" />
-      <LinearGradient
-        colors={['#FFCC00', '#FFD700']}
-        style={styles.container}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <MaterialIcons name="arrow-back" size={24} color={Colors.text.white} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Salon</Text>
-            <View style={styles.headerSpacer} />
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.white} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="chevron-left" size={28} color={THEME.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Salon</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Icon Section */}
+          <View style={styles.iconSection}>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="content-cut" size={48} color={THEME.yellow} />
+            </View>
           </View>
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* Pattern Background */}
-            <View style={styles.patternContainer}>
-              {[...Array(15)].map((_, i) => (
-                <Ionicons
-                  key={i}
-                  name="paw"
-                  size={40}
-                  color="rgba(255,255,255,0.1)"
-                  style={[
-                    styles.patternIcon,
-                    {
-                      top: Math.random() * 400,
-                      left: Math.random() * 400,
-                      transform: [{ rotate: `${Math.random() * 360}deg` }],
-                    },
-                  ]}
-                />
-              ))}
-            </View>
+          {/* Title Section */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>Pilih cara terbaik untuk merawat</Text>
+            <Text style={styles.title}>hewan kesayangan Anda</Text>
+          </View>
 
-            {/* Mascot Section */}
-            <View style={styles.mascotSection}>
-              <Image
-                source={require('../../../assets/Grooming Maskot.png')}
-                style={styles.mascotImage}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* Content Section */}
-            <View style={styles.contentSection}>
-              <Text style={styles.title}>Pilih Jenis Layanan</Text>
-              <Text style={styles.subtitle}>
-                Silakan pilih cara yang paling nyaman untuk grooming hewan peliharaan Anda.
-              </Text>
-
-              {/* Service Options */}
-              <View style={styles.serviceOptions}>
+          {/* Service Options */}
+          <View style={styles.serviceOptions}>
             {/* Walk-in Option */}
             <TouchableOpacity
               style={[
-                styles.serviceOption,
-                selectedService === 'walkIn' && styles.serviceOptionActive
+                styles.serviceCard,
+                selectedService === 'walkIn' && styles.serviceCardSelected,
               ]}
               onPress={() => setSelectedService('walkIn')}
+              activeOpacity={0.7}
             >
-              <View style={styles.serviceOptionHeader}>
-                <View style={[
-                  styles.radioButton,
-                  selectedService === 'walkIn' && styles.radioButtonActive
-                ]}>
-                  {selectedService === 'walkIn' && <View style={styles.radioButtonInner} />}
-                </View>
-                <View style={styles.serviceOptionContent}>
-                  <Text style={[
-                    styles.serviceOptionTitle,
-                    selectedService === 'walkIn' && styles.serviceOptionTitleActive
+              <View style={styles.serviceCardContent}>
+                <View style={styles.radioContainer}>
+                  <View style={[
+                    styles.radioButton,
+                    selectedService === 'walkIn' && styles.radioButtonSelected,
                   ]}>
-                    Walk-in
+                    {selectedService === 'walkIn' && <View style={styles.radioButtonInner} />}
+                  </View>
+                </View>
+
+                <View style={styles.serviceIconContainer}>
+                  <View style={[styles.serviceIcon, { backgroundColor: '#E3F2FD' }]}>
+                    <MaterialIcons name="store" size={24} color={THEME.blue} />
+                  </View>
+                </View>
+
+                <View style={styles.serviceInfo}>
+                  <Text style={styles.serviceName}>Walk-in</Text>
+                  <Text style={styles.serviceSubtitle}>Kunjungi Salon</Text>
+                  <Text style={styles.serviceDescription}>
+                    Datang langsung ke salon kami untuk pengalaman grooming lengkap
                   </Text>
-                  <Text style={styles.serviceOptionDescription}>
-                    Kamu menjadwalkan mau datang ke salon.
-                  </Text>
+                  <View style={styles.serviceTags}>
+                    <View style={styles.tag}>
+                      <MaterialIcons name="schedule" size={12} color={THEME.textSecondary} />
+                      <Text style={styles.tagText}>Lebih cepat</Text>
+                    </View>
+                    <View style={styles.tag}>
+                      <MaterialIcons name="attach-money" size={12} color={THEME.textSecondary} />
+                      <Text style={styles.tagText}>Lebih murah</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
@@ -130,50 +131,65 @@ export default function GroomingScreen() {
             {/* Home Service Option */}
             <TouchableOpacity
               style={[
-                styles.serviceOption,
-                selectedService === 'homeService' && styles.serviceOptionActive
+                styles.serviceCard,
+                selectedService === 'homeService' && styles.serviceCardSelected,
               ]}
               onPress={() => setSelectedService('homeService')}
+              activeOpacity={0.7}
             >
-              <View style={styles.serviceOptionHeader}>
-                <View style={[
-                  styles.radioButton,
-                  selectedService === 'homeService' && styles.radioButtonActive
-                ]}>
-                  {selectedService === 'homeService' && <View style={styles.radioButtonInner} />}
-                </View>
-                <View style={styles.serviceOptionContent}>
-                  <Text style={[
-                    styles.serviceOptionTitle,
-                    selectedService === 'homeService' && styles.serviceOptionTitleActive
+              <View style={styles.serviceCardContent}>
+                <View style={styles.radioContainer}>
+                  <View style={[
+                    styles.radioButton,
+                    selectedService === 'homeService' && styles.radioButtonSelected,
                   ]}>
-                    Home Service
+                    {selectedService === 'homeService' && <View style={styles.radioButtonInner} />}
+                  </View>
+                </View>
+
+                <View style={styles.serviceIconContainer}>
+                  <View style={[styles.serviceIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <MaterialIcons name="home" size={24} color={THEME.green} />
+                  </View>
+                </View>
+
+                <View style={styles.serviceInfo}>
+                  <Text style={styles.serviceName}>Home Service</Text>
+                  <Text style={styles.serviceSubtitle}>Panggil ke Rumah</Text>
+                  <Text style={styles.serviceDescription}>
+                    Groomer profesional datang ke rumah Anda dengan peralatan lengkap
                   </Text>
-                  <Text style={styles.serviceOptionDescription}>
-                    Kamu menjadwalkan groomer datang ke rumah.
-                  </Text>
+                  <View style={styles.serviceTags}>
+                    <View style={styles.tag}>
+                      <MaterialIcons name="home" size={12} color={THEME.textSecondary} />
+                      <Text style={styles.tagText}>Lebih nyaman</Text>
+                    </View>
+                    <View style={styles.tag}>
+                      <MaterialIcons name="spa" size={12} color={THEME.textSecondary} />
+                      <Text style={styles.tagText}>Stress-free</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-            </TouchableOpacity>
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* Continue Button */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.continueButton,
-                !selectedService && styles.continueButtonDisabled
-              ]}
-              onPress={handleContinue}
-              disabled={!selectedService}
-            >
-              <Text style={styles.continueButtonText}>Selanjutnya</Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
-      </LinearGradient>
+        </ScrollView>
+
+        {/* Continue Button */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              !selectedService && styles.continueButtonDisabled,
+            ]}
+            onPress={handleContinue}
+            disabled={!selectedService}
+          >
+            <Text style={styles.continueButtonText}>Lanjutkan</Text>
+            <MaterialIcons name="arrow-forward" size={20} color={THEME.white} />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </>
   );
 }
@@ -181,153 +197,169 @@ export default function GroomingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  patternContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 400,
-    overflow: 'hidden',
-  },
-  patternIcon: {
-    position: 'absolute',
+    backgroundColor: THEME.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.base,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.md,
+    backgroundColor: THEME.white,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
   },
   backButton: {
-    padding: Spacing.sm,
+    padding: Spacing.xs,
   },
   headerTitle: {
     flex: 1,
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.white,
+    color: THEME.textPrimary,
     textAlign: 'center',
   },
   headerSpacer: {
-    width: 40,
+    width: 36,
   },
   scrollView: {
     flex: 1,
   },
-  mascotSection: {
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  iconSection: {
     alignItems: 'center',
-    paddingBottom: Spacing.xl,
-    paddingTop: Spacing.lg,
-    zIndex: 2,
+    paddingTop: Spacing.xl * 2,
+    paddingBottom: Spacing.lg,
   },
-  mascotImage: {
-    width: width * 0.6,
-    height: width * 0.6,
-    maxWidth: 250,
-    maxHeight: 250,
-  },
-  contentSection: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-    borderTopLeftRadius: BorderRadius['2xl'],
-    borderTopRightRadius: BorderRadius['2xl'],
-    marginTop: -BorderRadius['2xl'],
-    paddingTop: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-    minHeight: 400,
-  },
-  title: {
-    fontSize: Typography.fontSize['2xl'],
-    fontFamily: Typography.fontFamily.bold,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: Spacing.md,
-  },
-  subtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: 20,
-  },
-  serviceOptions: {
-    gap: Spacing.md,
-  },
-  serviceOption: {
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.background.primary,
-    overflow: 'hidden',
-  },
-  serviceOptionActive: {
-    borderColor: '#00BCD4',
-    backgroundColor: '#E0F7FA',
-  },
-  serviceOptionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: Spacing.lg,
-  },
-  radioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: BorderRadius.full,
-    borderWidth: 2,
-    borderColor: Colors.border.main,
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF8E1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.md,
-    marginTop: 2,
   },
-  radioButtonActive: {
-    borderColor: '#00BCD4',
+  titleSection: {
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  title: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  serviceOptions: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
+  },
+  serviceCard: {
+    backgroundColor: THEME.white,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 2,
+    borderColor: THEME.border,
+    overflow: 'hidden',
+  },
+  serviceCardSelected: {
+    borderColor: THEME.primary,
+  },
+  serviceCardContent: {
+    flexDirection: 'row',
+    padding: Spacing.lg,
+  },
+  radioContainer: {
+    paddingTop: Spacing.xs,
+  },
+  radioButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: THEME.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: THEME.primary,
   },
   radioButtonInner: {
     width: 12,
     height: 12,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#00BCD4',
+    borderRadius: 6,
+    backgroundColor: THEME.primary,
   },
-  serviceOptionContent: {
+  serviceIconContainer: {
+    marginLeft: Spacing.md,
+    marginRight: Spacing.md,
+  },
+  serviceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceInfo: {
     flex: 1,
   },
-  serviceOptionTitle: {
+  serviceName: {
     fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.primary,
+    fontFamily: Typography.fontFamily.bold,
+    color: THEME.textPrimary,
+    marginBottom: 2,
+  },
+  serviceSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.medium,
+    color: THEME.yellow,
     marginBottom: Spacing.sm,
   },
-  serviceOptionTitleActive: {
-    color: '#00BCD4',
-  },
-  serviceOptionDescription: {
+  serviceDescription: {
     fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
     lineHeight: 20,
+    marginBottom: Spacing.md,
+  },
+  serviceTags: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tagText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
   },
   buttonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    backgroundColor: THEME.background,
   },
   continueButton: {
-    backgroundColor: '#00BCD4',
+    backgroundColor: THEME.primary,
     borderRadius: BorderRadius.full,
     paddingVertical: Spacing.base,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: Colors.shadow.main,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 5,
   },
   continueButtonDisabled: {
@@ -336,6 +368,6 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
-    color: Colors.text.white,
+    color: THEME.white,
   },
 });
