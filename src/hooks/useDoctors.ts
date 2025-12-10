@@ -23,7 +23,7 @@ export function useDoctors(filters?: {
     queryKey,
     queryFn: () => odooDoctorService.getDoctors(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   return {
@@ -110,8 +110,8 @@ export function useAppointments(userId?: number, filters?: any) {
     mutationFn: (appointmentData: any) =>
       odooDoctorService.createAppointment(appointmentData),
     onSuccess: () => {
-      queryClient.invalidateQueries(['appointments']);
-      queryClient.invalidateQueries(['doctor-schedule']);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-schedule'] });
       Alert.alert('Success', 'Appointment created successfully!');
     },
     onError: (error: any) => {
@@ -124,8 +124,8 @@ export function useAppointments(userId?: number, filters?: any) {
     mutationFn: ({ appointmentId, reason }: { appointmentId: number; reason?: string }) =>
       odooDoctorService.cancelAppointment(appointmentId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries(['appointments']);
-      queryClient.invalidateQueries(['doctor-schedule']);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-schedule'] });
       Alert.alert('Success', 'Appointment cancelled successfully');
     },
     onError: (error: any) => {
@@ -145,8 +145,8 @@ export function useAppointments(userId?: number, filters?: any) {
       newTimeSlot: string;
     }) => odooDoctorService.rescheduleAppointment(appointmentId, newDate, newTimeSlot),
     onSuccess: () => {
-      queryClient.invalidateQueries(['appointments']);
-      queryClient.invalidateQueries(['doctor-schedule']);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-schedule'] });
       Alert.alert('Success', 'Appointment rescheduled successfully');
     },
     onError: (error: any) => {
@@ -162,9 +162,9 @@ export function useAppointments(userId?: number, filters?: any) {
     createAppointment: createAppointmentMutation.mutate,
     cancelAppointment: cancelAppointmentMutation.mutate,
     rescheduleAppointment: rescheduleAppointmentMutation.mutate,
-    isCreating: createAppointmentMutation.isLoading,
-    isCancelling: cancelAppointmentMutation.isLoading,
-    isRescheduling: rescheduleAppointmentMutation.isLoading,
+    isCreating: createAppointmentMutation.isPending,
+    isCancelling: cancelAppointmentMutation.isPending,
+    isRescheduling: rescheduleAppointmentMutation.isPending,
   };
 }
 
@@ -191,8 +191,8 @@ export function useMedicalRecords(petId?: number) {
   const createMedicalRecordMutation = useMutation({
     mutationFn: (recordData: any) => odooDoctorService.createMedicalRecord(recordData),
     onSuccess: () => {
-      queryClient.invalidateQueries(['medical-history']);
-      queryClient.invalidateQueries(['appointments']);
+      queryClient.invalidateQueries({ queryKey: ['medical-history'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       Alert.alert('Success', 'Medical record created successfully');
     },
     onError: (error: any) => {
@@ -206,7 +206,7 @@ export function useMedicalRecords(petId?: number) {
     error,
     refetch,
     createMedicalRecord: createMedicalRecordMutation.mutate,
-    isCreating: createMedicalRecordMutation.isLoading,
+    isCreating: createMedicalRecordMutation.isPending,
   };
 }
 
@@ -234,8 +234,8 @@ export function usePrescriptions(petId?: number) {
     mutationFn: (prescriptionData: any) =>
       odooDoctorService.createPrescription(prescriptionData),
     onSuccess: () => {
-      queryClient.invalidateQueries(['prescriptions']);
-      queryClient.invalidateQueries(['medical-history']);
+      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['medical-history'] });
       Alert.alert('Success', 'Prescription created successfully');
     },
     onError: (error: any) => {
@@ -249,7 +249,7 @@ export function usePrescriptions(petId?: number) {
     error,
     refetch,
     createPrescription: createPrescriptionMutation.mutate,
-    isCreating: createPrescriptionMutation.isLoading,
+    isCreating: createPrescriptionMutation.isPending,
   };
 }
 
@@ -283,8 +283,8 @@ export function useAppointmentInvoice(appointmentId?: number) {
       additionalCharges?: any[];
     }) => odooDoctorService.createAppointmentInvoice(appointmentId, additionalCharges),
     onSuccess: () => {
-      queryClient.invalidateQueries(['appointment-invoice']);
-      queryClient.invalidateQueries(['appointments']);
+      queryClient.invalidateQueries({ queryKey: ['appointment-invoice'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       Alert.alert('Success', 'Invoice created successfully');
     },
     onError: (error: any) => {
@@ -298,7 +298,7 @@ export function useAppointmentInvoice(appointmentId?: number) {
     error,
     refetch,
     createInvoice: createInvoiceMutation.mutate,
-    isCreatingInvoice: createInvoiceMutation.isLoading,
+    isCreatingInvoice: createInvoiceMutation.isPending,
   };
 }
 
@@ -310,13 +310,13 @@ export function useDoctorCacheClear() {
 
   const clearCache = useCallback(async () => {
     await odooDoctorService.clearCache();
-    queryClient.invalidateQueries(['doctors']);
-    queryClient.invalidateQueries(['doctor']);
-    queryClient.invalidateQueries(['doctor-schedule']);
-    queryClient.invalidateQueries(['appointments']);
-    queryClient.invalidateQueries(['medical-history']);
-    queryClient.invalidateQueries(['prescriptions']);
-    queryClient.invalidateQueries(['appointment-invoice']);
+    queryClient.invalidateQueries({ queryKey: ['doctors'] });
+    queryClient.invalidateQueries({ queryKey: ['doctor'] });
+    queryClient.invalidateQueries({ queryKey: ['doctor-schedule'] });
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['medical-history'] });
+    queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+    queryClient.invalidateQueries({ queryKey: ['appointment-invoice'] });
   }, [queryClient]);
 
   return { clearCache };

@@ -20,6 +20,9 @@ import { Spacing, BorderRadius } from '../../constants/spacing';
 import { RootStackParamList } from '../../navigation/types';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
+import standaloneOrderService from '../../services/order/standaloneOrderService';
+import config from '../../config/environment';
+import { useCart } from '../../contexts/CartContext';
 
 type PaymentRouteProp = RouteProp<RootStackParamList, 'EwalletPayment'>;
 type NavigationProp = StackNavigationProp<RootStackParamList, 'EwalletPayment'>;
@@ -27,6 +30,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList, 'EwalletPayment'>;
 export default function EwalletPaymentScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaymentRouteProp>();
+  const { clearCart } = useCart();
 
   const { paymentData, orderInfo, paymentMethod } = route.params || {};
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'success' | 'expired'>('pending');
@@ -194,10 +198,17 @@ export default function EwalletPaymentScreen() {
     clearInterval(intervalRef.current);
     clearInterval(statusCheckRef.current);
 
-    // Update order status in Odoo
+    // Clear cart since payment is successful
+    clearCart();
+
+    // Update order status - use standalone API if enabled
     if (orderInfo?.orderId) {
       try {
-        await orderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        if (config.USE_STANDALONE_API) {
+          await standaloneOrderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        } else {
+          await orderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        }
       } catch (error) {
       }
     }
@@ -426,6 +437,8 @@ export default function EwalletPaymentScreen() {
             }
 
             // Payment still pending, navigate to Activity screen
+            // Clear cart since order has been created
+            clearCart();
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,

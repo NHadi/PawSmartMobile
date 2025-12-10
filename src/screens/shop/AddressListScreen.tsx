@@ -86,10 +86,16 @@ export default function AddressListScreen() {
 
       setAddresses(convertedAddresses);
 
-      // Set default selected address
-      const defaultAddress = convertedAddresses.find((addr: Address) => addr.isDefault);
-      if (defaultAddress) {
-        setSelectedAddressId(defaultAddress.id);
+      // Set default selected address only if not already selected
+      // This preserves user selection when returning to this screen
+      if (!selectedAddressId) {
+        const defaultAddress = convertedAddresses.find((addr: Address) => addr.isDefault);
+        if (defaultAddress) {
+          setSelectedAddressId(defaultAddress.id);
+        } else if (convertedAddresses.length > 0) {
+          // If no default, select first address
+          setSelectedAddressId(convertedAddresses[0].id);
+        }
       }
     } catch (error) {
       console.error('Failed to load addresses:', error);

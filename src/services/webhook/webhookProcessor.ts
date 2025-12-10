@@ -4,8 +4,15 @@
  */
 
 import orderService from '../order/orderService';
+import standaloneOrderService from '../order/standaloneOrderService';
 import paymentGatewayService from '../payment/paymentGatewayService';
 import { PaymentMethod } from '../payment/paymentGatewayConfig';
+import config from '../../config/environment';
+
+// Helper to get the appropriate order service based on config
+const getOrderService = () => {
+  return config.USE_STANDALONE_API ? standaloneOrderService : orderService;
+};
 
 interface WebhookData {
   id: string;
@@ -40,24 +47,25 @@ class WebhookProcessor {
                                (status === 'ACTIVE' && webhookData.received_amount && 
                                 webhookData.received_amount >= (webhookData.expected_amount || 0));
       
+      const orderSvc = getOrderService();
       if (isPaymentComplete) {
         // Update order with payment information
-        await orderService.updateOrderPaymentInfo(
+        await orderSvc.updateOrderPaymentInfo(
           orderId,
           paymentId,
           'VIRTUAL_ACCOUNT',
           'COMPLETED'
         );
-        
+
         // Update order status to payment confirmed
-        await orderService.updateOrderStatus(orderId, 'payment_confirmed');
-        
+        await orderSvc.updateOrderStatus(orderId, 'payment_confirmed');
+
         // Optional: Send notification to user
         this.sendPaymentNotification(orderId, 'success');
-        
+
       } else {
         // Update payment info but keep waiting for payment
-        await orderService.updateOrderPaymentInfo(
+        await orderSvc.updateOrderPaymentInfo(
           orderId,
           paymentId,
           'VIRTUAL_ACCOUNT',
@@ -76,16 +84,17 @@ class WebhookProcessor {
     try {
       const { reference_id, status, id: paymentId } = webhookData;
       
+      const orderSvc = getOrderService();
       if (reference_id && status === 'COMPLETED') {
-        await orderService.updateOrderPaymentInfo(
+        await orderSvc.updateOrderPaymentInfo(
           reference_id,
           paymentId,
           'QRIS',
           'COMPLETED'
         );
-        
-        await orderService.updateOrderStatus(reference_id, 'payment_confirmed');
-        
+
+        await orderSvc.updateOrderStatus(reference_id, 'payment_confirmed');
+
         this.sendPaymentNotification(reference_id, 'success');
       }
       
@@ -100,16 +109,17 @@ class WebhookProcessor {
     try {
       const { reference_id, status, id: paymentId } = webhookData;
       
+      const orderSvc = getOrderService();
       if (reference_id && (status === 'SUCCEEDED' || status === 'CAPTURED')) {
-        await orderService.updateOrderPaymentInfo(
+        await orderSvc.updateOrderPaymentInfo(
           reference_id,
           paymentId,
           'EWALLET',
           'COMPLETED'
         );
-        
-        await orderService.updateOrderStatus(reference_id, 'payment_confirmed');
-        
+
+        await orderSvc.updateOrderStatus(reference_id, 'payment_confirmed');
+
         this.sendPaymentNotification(reference_id, 'success');
       }
       
@@ -154,16 +164,17 @@ class WebhookProcessor {
         orderId = match ? match[1] : null;
       }
       
+      const orderSvc = getOrderService();
       if (orderId && (status === 'COMPLETED' || status === 'SUCCEEDED' || status === 'PAID')) {
-        await orderService.updateOrderPaymentInfo(
+        await orderSvc.updateOrderPaymentInfo(
           orderId,
           id,
           'VIRTUAL_ACCOUNT', // Default to VA
           'COMPLETED'
         );
-        
-        await orderService.updateOrderStatus(orderId, 'payment_confirmed');
-        
+
+        await orderSvc.updateOrderStatus(orderId, 'payment_confirmed');
+
         this.sendPaymentNotification(orderId, 'success');
       }
       

@@ -240,76 +240,82 @@ export default function CheckoutScreen() {
 
         setUser(authContextUser);
 
-        // Load addresses from standalone API
-        try {
-          const addresses = await standaloneAddressService.getAddresses();
-          if (addresses.length > 0) {
-            // Find default address or use first one
-            const defaultAddr = addresses.find(addr => addr.is_default) || addresses[0];
+        // Only load default address if no address is already selected
+        // This prevents overwriting user's address selection from AddressListScreen
+        // Also check route.params for selectedAddress to avoid race condition
+        const params = route.params as any;
+        if (!selectedAddress && !params?.selectedAddress) {
+          // Load addresses from standalone API
+          try {
+            const addresses = await standaloneAddressService.getAddresses();
+            if (addresses.length > 0) {
+              // Find default address or use first one
+              const defaultAddr = addresses.find(addr => addr.is_default) || addresses[0];
 
-            // Convert to our Address format
-            const convertedAddress: Address = {
-              id: defaultAddr.id.toString(),
-              label: defaultAddr.label || 'Rumah',
-              name: defaultAddr.recipient_name,
-              phone: defaultAddr.phone || '',
-              fullAddress: defaultAddr.address_line1,
-              detail: defaultAddr.address_line2 || '',
-              postalCode: defaultAddr.postal_code,
-              isDefault: defaultAddr.is_default,
-              latitude: defaultAddr.latitude,
-              longitude: defaultAddr.longitude,
-              province: defaultAddr.state,
-              city: defaultAddr.city,
-              district: defaultAddr.district,
-              subDistrict: defaultAddr.subdistrict,
-              // Include KiriminAja IDs for shipping (if available in notes)
-              province_id: undefined,
-              city_id: undefined,
-              district_id: undefined,
-              subdistrict_id: undefined,
-            };
+              // Convert to our Address format
+              const convertedAddress: Address = {
+                id: defaultAddr.id.toString(),
+                label: defaultAddr.label || 'Rumah',
+                name: defaultAddr.recipient_name,
+                phone: defaultAddr.phone || '',
+                fullAddress: defaultAddr.address_line1,
+                detail: defaultAddr.address_line2 || '',
+                postalCode: defaultAddr.postal_code,
+                isDefault: defaultAddr.is_default,
+                latitude: defaultAddr.latitude,
+                longitude: defaultAddr.longitude,
+                province: defaultAddr.state,
+                city: defaultAddr.city,
+                district: defaultAddr.district,
+                subDistrict: defaultAddr.subdistrict,
+                // Include KiriminAja IDs for shipping (if available in notes)
+                province_id: undefined,
+                city_id: undefined,
+                district_id: undefined,
+                subdistrict_id: undefined,
+              };
 
-            setSelectedAddress(convertedAddress);
-          } else {
-            // If no default address found in API, try to get default from local storage
-            console.log('No default address found in API, checking local storage...');
-            try {
-              const defaultAddressId = await defaultAddressService.getDefaultAddressId();
-              if (defaultAddressId) {
-                const defaultAddr = addresses.find(addr => addr.id.toString() === defaultAddressId);
-                if (defaultAddr) {
-                  const convertedDefaultAddress: Address = {
-                    id: defaultAddr.id.toString(),
-                    label: defaultAddr.label || 'Rumah',
-                    name: defaultAddr.recipient_name,
-                    phone: defaultAddr.phone || '',
-                    fullAddress: defaultAddr.address_line1,
-                    detail: defaultAddr.address_line2 || '',
-                    postalCode: defaultAddr.postal_code,
-                    isDefault: defaultAddr.is_default,
-                    latitude: defaultAddr.latitude,
-                    longitude: defaultAddr.longitude,
-                    province: defaultAddr.state,
-                    city: defaultAddr.city,
-                    district: defaultAddr.district,
-                    subDistrict: defaultAddr.subdistrict,
-                    province_id: undefined,
-                    city_id: undefined,
-                    district_id: undefined,
-                    subdistrict_id: undefined,
-                  };
-                  setSelectedAddress(convertedDefaultAddress);
-                  console.log('Set default address from local storage');
+              setSelectedAddress(convertedAddress);
+            } else {
+              // If no default address found in API, try to get default from local storage
+              console.log('No default address found in API, checking local storage...');
+              try {
+                const defaultAddressId = await defaultAddressService.getDefaultAddressId();
+                if (defaultAddressId) {
+                  const defaultAddr = addresses.find(addr => addr.id.toString() === defaultAddressId);
+                  if (defaultAddr) {
+                    const convertedDefaultAddress: Address = {
+                      id: defaultAddr.id.toString(),
+                      label: defaultAddr.label || 'Rumah',
+                      name: defaultAddr.recipient_name,
+                      phone: defaultAddr.phone || '',
+                      fullAddress: defaultAddr.address_line1,
+                      detail: defaultAddr.address_line2 || '',
+                      postalCode: defaultAddr.postal_code,
+                      isDefault: defaultAddr.is_default,
+                      latitude: defaultAddr.latitude,
+                      longitude: defaultAddr.longitude,
+                      province: defaultAddr.state,
+                      city: defaultAddr.city,
+                      district: defaultAddr.district,
+                      subDistrict: defaultAddr.subdistrict,
+                      province_id: undefined,
+                      city_id: undefined,
+                      district_id: undefined,
+                      subdistrict_id: undefined,
+                    };
+                    setSelectedAddress(convertedDefaultAddress);
+                    console.log('Set default address from local storage');
+                  }
                 }
+              } catch (localError) {
+                console.log('No default address found in local storage');
               }
-            } catch (localError) {
-              console.log('No default address found in local storage');
             }
+          } catch (error) {
+            console.error('Failed to load addresses:', error);
+            // Don't show error for address loading, user can still proceed
           }
-        } catch (error) {
-          console.error('Failed to load addresses:', error);
-          // Don't show error for address loading, user can still proceed
         }
       } catch (error) {
         console.error('Authentication check failed:', error);
@@ -665,14 +671,23 @@ export default function CheckoutScreen() {
         paymentOptions
       );
       
-      // Save payment info to order
+      // Save payment info to order - use standalone API if enabled
       if (paymentResponse && paymentResponse.paymentId && currentOrderId) {
-        await orderService.updateOrderPaymentInfo(
-          currentOrderId,
-          paymentResponse.paymentId,
-          method.type,
-          paymentResponse.status || 'PENDING'
-        );
+        if (config.USE_STANDALONE_API) {
+          await standaloneOrderService.updateOrderPaymentInfo(
+            currentOrderId,
+            paymentResponse.paymentId,
+            method.type,
+            paymentResponse.status || 'PENDING'
+          );
+        } else {
+          await orderService.updateOrderPaymentInfo(
+            currentOrderId,
+            paymentResponse.paymentId,
+            method.type,
+            paymentResponse.status || 'PENDING'
+          );
+        }
       }
       
       setPaymentData(paymentResponse);

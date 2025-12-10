@@ -6,7 +6,14 @@
 import paymentGatewayService from './paymentGatewayService';
 import paymentPollingService from './paymentPollingService';
 import orderService from '../order/orderService';
+import standaloneOrderService from '../order/standaloneOrderService';
 import { PaymentMethod } from './paymentGatewayConfig';
+import config from '../../config/environment';
+
+// Helper to get the appropriate order service based on config
+const getOrderService = () => {
+  return config.USE_STANDALONE_API ? standaloneOrderService : orderService;
+};
 
 interface PaymentSession {
   orderId: string;
@@ -64,7 +71,8 @@ class PaymentIntegrationService {
       }
 
       // Store payment info in order
-      await orderService.updateOrderPaymentInfo(
+      const orderSvc = getOrderService();
+      await orderSvc.updateOrderPaymentInfo(
         orderData.orderId,
         paymentId,
         paymentMethod,

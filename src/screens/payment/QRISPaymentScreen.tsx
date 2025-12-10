@@ -20,7 +20,10 @@ import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
+import standaloneOrderService from '../../services/order/standaloneOrderService';
 import flipPaymentGateway from '../../services/payment/flipPaymentGateway';
+import config from '../../config/environment';
+import { useCart } from '../../contexts/CartContext';
 
 type PaymentRouteProp = RouteProp<HomeStackParamList, 'QRISPayment'>;
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'QRISPayment'>;
@@ -28,7 +31,8 @@ type NavigationProp = StackNavigationProp<HomeStackParamList, 'QRISPayment'>;
 export default function QRISPaymentScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaymentRouteProp>();
-  
+  const { clearCart } = useCart();
+
   const { paymentData, orderInfo } = route.params || {};
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'success' | 'expired'>('pending');
@@ -92,10 +96,17 @@ export default function QRISPaymentScreen() {
     clearInterval(intervalRef.current);
     clearInterval(statusCheckRef.current);
 
-    // Update order status in Odoo
+    // Clear cart since payment is successful
+    clearCart();
+
+    // Update order status - use standalone API if enabled
     if (orderInfo?.orderId) {
       try {
-        await orderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        if (config.USE_STANDALONE_API) {
+          await standaloneOrderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        } else {
+          await orderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        }
       } catch (error) {
         console.log('Error updating order status:', error);
       }
@@ -389,6 +400,8 @@ export default function QRISPaymentScreen() {
 
             // Only navigate to success screen if payment is confirmed
             if (paymentStatus === 'success') {
+              // Clear cart since payment is successful
+              clearCart();
               navigation.replace('UniversalSuccess', {
                 orderId: orderInfo?.orderId,
                 orderName: orderInfo?.orderName,
@@ -411,6 +424,8 @@ export default function QRISPaymentScreen() {
                   {
                     text: 'Lihat Aktivitas',
                     onPress: () => {
+                      // Clear cart since order has been created
+                      clearCart();
                       navigation.dispatch(
                         CommonActions.reset({
                           index: 0,

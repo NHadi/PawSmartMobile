@@ -20,6 +20,9 @@ import { RootStackParamList } from '../../navigation/types';
 import paymentSimulator from '../../services/payment/paymentSimulator';
 import paymentGatewayService from '../../services/payment/paymentGatewayService';
 import orderService from '../../services/order/orderService';
+import standaloneOrderService from '../../services/order/standaloneOrderService';
+import config from '../../config/environment';
+import { useCart } from '../../contexts/CartContext';
 
 type PaymentRouteProp = RouteProp<RootStackParamList, 'VirtualAccountPayment'>;
 type NavigationProp = StackNavigationProp<RootStackParamList, 'VirtualAccountPayment'>;
@@ -39,6 +42,7 @@ const getBankName = (code: string) => {
 export default function VirtualAccountPaymentScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaymentRouteProp>();
+  const { clearCart } = useCart();
 
   const { paymentData, orderInfo } = route.params || {};
   const [loading, setLoading] = useState(false);
@@ -137,10 +141,17 @@ export default function VirtualAccountPaymentScreen() {
     clearInterval(intervalRef.current);
     clearInterval(statusCheckRef.current);
 
-    // Update order status in Odoo
+    // Clear cart since payment is successful
+    clearCart();
+
+    // Update order status - use standalone API if enabled
     if (orderInfo?.orderId) {
       try {
-        await orderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        if (config.USE_STANDALONE_API) {
+          await standaloneOrderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        } else {
+          await orderService.updateOrderStatus(orderInfo.orderId, 'payment_confirmed');
+        }
       } catch (error) {
         // Silent error
       }
@@ -368,6 +379,8 @@ export default function VirtualAccountPaymentScreen() {
                   text: 'Lihat Aktivitas',
                   onPress: () => {
                     setHasNavigated(true);
+                    // Clear cart since order has been created
+                    clearCart();
                     // Clear intervals
                     if (intervalRef.current) {
                       clearInterval(intervalRef.current);

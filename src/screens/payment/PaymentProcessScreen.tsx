@@ -19,7 +19,10 @@ import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
 import orderService from '../../services/order/orderService';
+import standaloneOrderService from '../../services/order/standaloneOrderService';
 import QRCode from 'react-native-qrcode-svg';
+import config from '../../config/environment';
+import { useCart } from '../../contexts/CartContext';
 
 type PaymentRouteProp = RouteProp<HomeStackParamList, 'PaymentProcess'>;
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'PaymentProcess'>;
@@ -35,7 +38,8 @@ interface PaymentMethod {
 export default function PaymentProcessScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaymentRouteProp>();
-  
+  const { clearCart } = useCart();
+
   const { orderId, orderName, totalAmount, paymentMethod } = route.params || {};
   
   const [timeRemaining, setTimeRemaining] = useState(24 * 60 * 60); // 24 hours in seconds
@@ -102,9 +106,13 @@ export default function PaymentProcessScreen() {
   const handlePaymentSuccess = () => {
     clearInterval(intervalRef.current);
 
-    // Update order status in Odoo
+    // Clear cart since payment is successful
+    clearCart();
+
+    // Update order status - use standalone API if enabled
     if (orderId) {
-      orderService.updateOrderStatus(orderId, 'payment_confirmed').catch(() => {
+      const orderSvc = config.USE_STANDALONE_API ? standaloneOrderService : orderService;
+      orderSvc.updateOrderStatus(orderId, 'payment_confirmed').catch(() => {
         // Error updating order status
       });
     }
@@ -139,7 +147,8 @@ export default function PaymentProcessScreen() {
           onPress: async () => {
             try {
               if (orderId) {
-                await orderService.cancelOrder(orderId);
+                const orderSvc = config.USE_STANDALONE_API ? standaloneOrderService : orderService;
+                await orderSvc.cancelOrder(orderId);
               }
               navigation.navigate('Home' as any, { screen: 'HomeScreen' });
             } catch (error) {
@@ -248,10 +257,14 @@ export default function PaymentProcessScreen() {
           
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.navigate('Activity' as any, {
-              screen: 'MyOrders',
-              params: { orderId: orderId?.toString() }
-            })}
+            onPress={() => {
+              // Clear cart since order has been created
+              clearCart();
+              navigation.navigate('Activity' as any, {
+                screen: 'MyOrders',
+                params: { orderId: orderId?.toString() }
+              });
+            }}
           >
             <Text style={styles.primaryButtonText}>Pesanan Saya</Text>
           </TouchableOpacity>

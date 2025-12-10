@@ -18,30 +18,35 @@ export const orderKeys = {
 
 /**
  * Hook to fetch user activities
+ * Note: Uses user.id for standalone API (previously used partner_id for Odoo)
  */
 export function useActivities(limit: number = 50) {
   const { user } = useAuth();
-  
+  // Use user.id for standalone API compatibility
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: activityKeys.list(user?.partner_id, limit),
-    queryFn: () => orderService.getActivities(limit, user?.partner_id),
+    queryKey: activityKeys.list(userId, limit),
+    queryFn: () => orderService.getActivities(limit, userId),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!user?.partner_id, // Only fetch if user is logged in
+    enabled: !!userId, // Only fetch if user is logged in
   });
 }
 
 /**
  * Hook to fetch orders with infinite scroll pagination
+ * Note: Uses user.id for standalone API (previously used partner_id for Odoo)
  */
 export function useOrders(pageSize: number = 10) {
   const { user } = useAuth();
+  const userId = user?.id;
 
   return useInfiniteQuery({
-    queryKey: ['orders', user?.partner_id, pageSize],
+    queryKey: ['orders', userId, pageSize],
     queryFn: ({ pageParam = 0 }) => {
       return orderService.getOrders({
-        partner_id: user?.partner_id,
+        user_id: userId,
         limit: pageSize,
         offset: pageParam * pageSize
       });
@@ -56,25 +61,27 @@ export function useOrders(pageSize: number = 10) {
     },
     staleTime: 2 * 60 * 1000, // Cache for 2 minutes
     gcTime: 5 * 60 * 1000,    // Keep in memory for 5 minutes
-    enabled: !!user?.partner_id, // Only fetch if user is logged in
+    enabled: !!userId, // Only fetch if user is logged in
   });
 }
 
 /**
  * Hook to fetch orders with simple pagination (legacy)
+ * Note: Uses user.id for standalone API (previously used partner_id for Odoo)
  */
 export function useOrdersSimple(limit: number = 20) {
   const { user } = useAuth();
+  const userId = user?.id;
 
   return useQuery({
-    queryKey: ['orders-simple', user?.partner_id, limit],
+    queryKey: ['orders-simple', userId, limit],
     queryFn: () => orderService.getOrders({
-      partner_id: user?.partner_id,
+      user_id: userId,
       limit
     }),
     staleTime: 2 * 60 * 1000, // Cache for 2 minutes
     gcTime: 5 * 60 * 1000,    // Keep in memory for 5 minutes
-    enabled: !!user?.partner_id, // Only fetch if user is logged in
+    enabled: !!userId, // Only fetch if user is logged in
   });
 }
 
@@ -84,6 +91,7 @@ export function useOrdersSimple(limit: number = 20) {
 export function useOrder(orderId: string | number) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const userId = user?.id;
 
   return useQuery({
     queryKey: orderKeys.detail(orderId),
@@ -92,10 +100,10 @@ export function useOrder(orderId: string | number) {
       console.log('🔍 Checking cached orders first for order:', orderId);
 
       const possibleKeys = [
-        ['orders', user?.partner_id, 5],
-        ['orders', user?.partner_id, 10],
-        ['orders', user?.partner_id, 20],
-        ['orders-simple', user?.partner_id, 20],
+        ['orders', userId, 5],
+        ['orders', userId, 10],
+        ['orders', userId, 20],
+        ['orders-simple', userId, 20],
       ];
 
       for (const key of possibleKeys) {

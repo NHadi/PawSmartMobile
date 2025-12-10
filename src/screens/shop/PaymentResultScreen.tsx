@@ -18,6 +18,7 @@ import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { HomeStackParamList } from '../../navigation/types';
 import orderService from '../../services/order/orderService';
+import { useCart } from '../../contexts/CartContext';
 
 type NavigationProp = StackNavigationProp<HomeStackParamList, 'PaymentResult'>;
 type PaymentResultRouteProp = RouteProp<HomeStackParamList, 'PaymentResult'>;
@@ -38,9 +39,17 @@ interface PaymentDetails {
 export default function PaymentResultScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaymentResultRouteProp>();
-  
+  const { clearCart } = useCart();
+
   // Default to success if no params are provided (for testing)
   const { status = 'success', paymentDetails: rawPaymentDetails } = route.params || { status: 'success' };
+
+  // Clear cart on successful payment
+  useEffect(() => {
+    if (status === 'success') {
+      clearCart();
+    }
+  }, [status]);
   
   // Provide defaults for paymentDetails if not provided
   const paymentDetails: PaymentDetails = rawPaymentDetails || {

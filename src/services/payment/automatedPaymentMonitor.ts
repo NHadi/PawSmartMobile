@@ -5,7 +5,14 @@
 
 import webhookProcessor from '../webhook/webhookProcessor';
 import orderService from '../order/orderService';
+import standaloneOrderService from '../order/standaloneOrderService';
 import paymentGatewayService from './paymentGatewayService';
+import config from '../../config/environment';
+
+// Helper to get the appropriate order service based on config
+const getOrderService = () => {
+  return config.USE_STANDALONE_API ? standaloneOrderService : orderService;
+};
 
 class AutomatedPaymentMonitor {
   private monitoringInterval: NodeJS.Timeout | null = null;
@@ -44,8 +51,9 @@ class AutomatedPaymentMonitor {
    */
   async checkAndProcessPendingPayments(): Promise<void> {
     try {
+      const orderSvc = getOrderService();
       // Get orders with pending payments
-      const pendingOrders = await orderService.getOrdersWithPendingPayments();
+      const pendingOrders = await orderSvc.getOrdersWithPendingPayments();
       
       if (pendingOrders.length === 0) {
         return;
@@ -64,7 +72,8 @@ class AutomatedPaymentMonitor {
    */
   private async processOrderPayment(order: any): Promise<void> {
     try {
-      const paymentInfo = orderService.getPaymentInfoFromOrder(order);
+      const orderSvc = getOrderService();
+      const paymentInfo = orderSvc.getPaymentInfoFromOrder(order);
       
       if (!paymentInfo.paymentId || !paymentInfo.paymentMethod) {
         return;
@@ -93,7 +102,7 @@ class AutomatedPaymentMonitor {
       } else {
         // Update payment status if changed
         if (paymentStatus.status !== paymentInfo.paymentStatus) {
-          await orderService.updateOrderPaymentInfo(
+          await orderSvc.updateOrderPaymentInfo(
             order.id,
             paymentInfo.paymentId,
             paymentInfo.paymentMethod,
@@ -111,11 +120,12 @@ class AutomatedPaymentMonitor {
    */
   async processExistingCompletedPayments(): Promise<void> {
     try {
+      const orderSvc = getOrderService();
       // Get recent orders that might have completed payments
-      const recentOrders = await orderService.getOrders({ limit: 20 });
-      
+      const recentOrders = await orderSvc.getOrders({ limit: 20 });
+
       for (const order of recentOrders) {
-        const paymentInfo = orderService.getPaymentInfoFromOrder(order);
+        const paymentInfo = orderSvc.getPaymentInfoFromOrder(order);
         
         if (paymentInfo.paymentId && order.state !== 'sale') {
           try {
