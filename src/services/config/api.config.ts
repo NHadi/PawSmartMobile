@@ -1,9 +1,9 @@
 import config from '../../config/environment';
 
-// API Configuration for Odoo Backend
+// API Configuration for Standalone Backend
 export const API_CONFIG = {
-  // Base URL for Odoo server
-  BASE_URL: config.ODOO.BASE_URL,
+  // Base URL for standalone API server
+  BASE_URL: config.STANDALONE_API.BASE_URL,
   
   // API version
   API_VERSION: config.ODOO.API_VERSION,

@@ -77,7 +77,7 @@ function withNetworkSecurityConfig(config) {
               domain: [
                 {
                   includeSubdomains: false,
-                  name: '103.67.244.254'
+                  name: '43.157.209.126'
                 },
                 {
                   includeSubdomains: true,

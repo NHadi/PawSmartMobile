@@ -2,8 +2,8 @@
 <network-security-config>
     <!-- HTTP cleartext allowed for development and staging servers -->
     <domain-config cleartextTrafficPermitted="true">
-        <!-- Odoo Server - Allow HTTP for APK builds -->
-        <domain includeSubdomains="false">103.67.244.254</domain>
+        <!-- Standalone API Server - Allow HTTP for APK builds -->
+        <domain includeSubdomains="false">43.157.209.126</domain>
         <!-- Local development -->
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">10.0.0.0/8</domain>

@@ -8,11 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",
-        "EXPO_PUBLIC_ODOO_DATABASE": "development",
-        "EXPO_PUBLIC_ODOO_USERNAME": "zakariali0705@gmail.com",
-        "EXPO_PUBLIC_ODOO_PASSWORD": "admin",
-        "EXPO_PUBLIC_ODOO_API_KEY": "bd598ce6e94176c354da8333ea381b854617175f",
+        "EXPO_PUBLIC_API_BASE_URL": "http://43.157.209.126:3001",
         "EAS_BUILD": "true",
         "EXPO_PUBLIC_API_VERSION": "v1",
         "EXPO_PUBLIC_XENDIT_SECRET_KEY": "xnd_development_msfP7kWOSLK5Yq1W765yVEYv33hTaMU7llz1z84PTQLeNOBmb0Xl5550owlh3W",
@@ -39,11 +35,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",
-        "EXPO_PUBLIC_ODOO_DATABASE": "development",
-        "EXPO_PUBLIC_ODOO_USERNAME": "zakariali0705@gmail.com",
-        "EXPO_PUBLIC_ODOO_PASSWORD": "admin",
-        "EXPO_PUBLIC_ODOO_API_KEY": "bd598ce6e94176c354da8333ea381b854617175f",
+        "EXPO_PUBLIC_API_BASE_URL": "http://43.157.209.126:3001",
         "EAS_BUILD": "true",
         "EXPO_PUBLIC_API_VERSION": "v1",
         "EXPO_PUBLIC_XENDIT_SECRET_KEY": "xnd_development_msfP7kWOSLK5Yq1W765yVEYv33hTaMU7llz1z84PTQLeNOBmb0Xl5550owlh3W",
@@ -72,11 +64,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_ODOO_URL": "http://103.67.244.254:8069",
-        "EXPO_PUBLIC_ODOO_DATABASE": "production",
-        "EXPO_PUBLIC_ODOO_USERNAME": "zakariali0705@gmail.com",
-        "EXPO_PUBLIC_ODOO_PASSWORD": "admin",
-        "EXPO_PUBLIC_ODOO_API_KEY": "bd598ce6e94176c354da8333ea381b854617175f",
+        "EXPO_PUBLIC_API_BASE_URL": "http://43.157.209.126:3001",
         "EAS_BUILD": "true",
         "EXPO_PUBLIC_API_VERSION": "v1",
         "EXPO_PUBLIC_XENDIT_SECRET_KEY": "xnd_production_YOUR_PRODUCTION_SECRET_KEY",

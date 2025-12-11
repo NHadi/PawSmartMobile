@@ -7,26 +7,19 @@ export const config = {
   // API Server Configuration - Standalone API Only
   USE_STANDALONE_API: true,
 
-  // Legacy Odoo Server Configuration (kept for backward compatibility)
+  // Legacy Odoo Server Configuration (kept for backward compatibility - now points to standalone)
   ODOO: {
-    BASE_URL: process.env.EXPO_PUBLIC_ODOO_URL ||
-      (__DEV__
-        ? 'http://103.67.244.254:8069'  // Development fallback
-        : 'http://103.67.244.254:8069'), // Production fallback
-    DATABASE: process.env.EXPO_PUBLIC_ODOO_DATABASE ||
-      (isProduction ? 'production' : 'development'),
-    USERNAME: process.env.EXPO_PUBLIC_ODOO_USERNAME || 'zakariali0705@gmail.com',
-    PASSWORD: process.env.EXPO_PUBLIC_ODOO_PASSWORD || 'admin',
-    API_KEY: process.env.EXPO_PUBLIC_ODOO_API_KEY || 'bd598ce6e94176c354da8333ea381b854617175f',
+    BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://43.157.209.126:3001',
+    DATABASE: process.env.EXPO_PUBLIC_ODOO_DATABASE || 'development',
+    USERNAME: process.env.EXPO_PUBLIC_ODOO_USERNAME || '',
+    PASSWORD: process.env.EXPO_PUBLIC_ODOO_PASSWORD || '',
+    API_KEY: process.env.EXPO_PUBLIC_ODOO_API_KEY || '',
     API_VERSION: process.env.EXPO_PUBLIC_API_VERSION || 'v1',
   },
 
   // Standalone API Configuration
   STANDALONE_API: {
-    BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL ||
-      (__DEV__
-        ? 'http://43.157.209.126:3001'     // Development API
-        : 'https://api.pawsmart.com'), // Production API
+    BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://43.157.209.126:3001',
     JWT_SECRET: process.env.EXPO_PUBLIC_JWT_SECRET || 'your-jwt-secret-key',
     TOKEN_REFRESH_THRESHOLD: 300, // Refresh token 5 minutes before expiry
   },
@@ -129,7 +122,7 @@ export const config = {
     RETRY_DELAY: 1000, // 1 second
     RETRY_MULTIPLIER: 2,
     // Allow HTTP traffic to specific domains
-    ALLOWED_HTTP_DOMAINS: ['103.67.244.254', 'localhost', '127.0.0.1'],
+    ALLOWED_HTTP_DOMAINS: ['43.157.209.126', 'localhost', '127.0.0.1'],
     // Allow HTTPS domains for standalone API
     ALLOWED_HTTPS_DOMAINS: ['api.pawsmart.com', 'staging-api.pawsmart.com'],
   },
