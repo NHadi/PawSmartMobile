@@ -79,24 +79,37 @@ const mockDoctors: Doctor[] = [
   },
 ];
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
+
+import DoctorService, { Doctor as DoctorModel } from '../../services/DoctorService';
+import { ActivityIndicator } from 'react-native';
 
 export default function DoctorHomeServiceScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [selectedDate, setSelectedDate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [doctors, setDoctors] = useState<DoctorModel[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const customerName = 'Alan Syahlan (+6282337709390)';
   const customerAddress = 'Jl. K.H. Mas Mansyur No. 8A, RT.10/RW.6, Karet Tengsin, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10220.';
+
+  React.useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    try {
+      setLoading(true);
+      const response = await DoctorService.getDoctors({ offers_home_service: true });
+      setDoctors(response.data);
+    } catch (error) {
+      console.error('Failed to fetching doctors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDatePicker = () => {
     setShowDatePicker(true);
@@ -112,11 +125,11 @@ export default function DoctorHomeServiceScreen() {
     setSelectedDate(formatted);
   };
 
-  const handleDoctorPress = (doctor: Doctor) => {
-    navigation.navigate('DoctorDetail', { doctorId: doctor.id });
+  const handleDoctorPress = (doctor: DoctorModel) => {
+    navigation.navigate('DoctorDetail', { doctorId: doctor.id.toString() });
   };
 
-  const renderDoctorCard = (doctor: Doctor, index: number) => (
+  const renderDoctorCard = (doctor: DoctorModel, index: number) => (
     <TouchableOpacity
       key={doctor.id}
       style={[styles.doctorCard, index % 2 === 0 ? styles.cardLeft : styles.cardRight]}
@@ -124,8 +137,12 @@ export default function DoctorHomeServiceScreen() {
       activeOpacity={0.7}
     >
       <View style={styles.doctorImageContainer}>
-        <Image source={doctor.image} style={styles.doctorImage} resizeMode="cover" />
-        {doctor.isAvailable24 && (
+        <Image
+          source={doctor.photo ? { uri: doctor.photo } : require('../../../assets/product-placeholder.jpg')}
+          style={styles.doctorImage}
+          resizeMode="cover"
+        />
+        {doctor.is_available && (
           <View style={styles.badge24}>
             <Text style={styles.badge24Text}>24H</Text>
           </View>
@@ -138,11 +155,11 @@ export default function DoctorHomeServiceScreen() {
 
         <View style={styles.ratingRow}>
           <MaterialIcons name="star" size={14} color="#FFB800" />
-          <Text style={styles.ratingText}>{doctor.rating}</Text>
+          <Text style={styles.ratingText}>{doctor.rating || 'N/A'}</Text>
         </View>
 
-        <Text style={styles.priceText}>{doctor.price}</Text>
-        <Text style={styles.locationText}>{doctor.location}</Text>
+        <Text style={styles.priceText}>Rp{Number(doctor.home_service_fee || 0).toLocaleString('id-ID')}</Text>
+        <Text style={styles.locationText}>{doctor.location || 'Jakarta'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -214,9 +231,19 @@ export default function DoctorHomeServiceScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Rekomendasi Dokter Untuk Kamu</Text>
 
-            <View style={styles.doctorsGrid}>
-              {mockDoctors.map((doctor, index) => renderDoctorCard(doctor, index))}
-            </View>
+            {loading ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={THEME.primary} />
+              </View>
+            ) : doctors.length > 0 ? (
+              <View style={styles.doctorsGrid}>
+                {doctors.map((doctor, index) => renderDoctorCard(doctor, index))}
+              </View>
+            ) : (
+              <Text style={{ textAlign: 'center', color: THEME.textSecondary, marginTop: 20 }}>
+                Tidak ada dokter tersedia untuk Home Service saat ini.
+              </Text>
+            )}
           </View>
         </ScrollView>
 

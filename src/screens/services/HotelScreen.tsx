@@ -113,15 +113,7 @@ const mockRecommendedHotels: Hotel[] = [
   },
 ];
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
 
 export default function HotelScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -240,7 +232,7 @@ export default function HotelScreen() {
           {/* Search Filters */}
           <View style={styles.filtersSection}>
             {/* Location Selector */}
-            <TouchableOpacity style={styles.filterItem} onPress={() => {}}>
+            <TouchableOpacity style={styles.filterItem} onPress={() => { }}>
               <Text style={styles.filterText}>{location}</Text>
               <MaterialIcons name="location-on" size={20} color={THEME.textSecondary} />
             </TouchableOpacity>

@@ -23,7 +23,7 @@ export const config = {
     JWT_SECRET: process.env.EXPO_PUBLIC_JWT_SECRET || 'your-jwt-secret-key',
     TOKEN_REFRESH_THRESHOLD: 300, // Refresh token 5 minutes before expiry
   },
-  
+
   // Payment Gateway Configuration
   PAYMENT_GATEWAYS: {
     // Use Flip as primary provider with correct sandbox endpoint
@@ -83,7 +83,7 @@ export const config = {
       API_VERSION: 'v6.1',
     },
   },
-  
+
   // Social Login Configuration
   SOCIAL_LOGIN: {
     GOOGLE: {
@@ -95,7 +95,7 @@ export const config = {
       APP_ID: process.env.EXPO_PUBLIC_FACEBOOK_APP_ID || '797841592820309',
     },
   },
-  
+
   // WhatsApp Integration Configuration
   WHATSAPP: {
     PROVIDER: process.env.EXPO_PUBLIC_WHATSAPP_PROVIDER || 'fonnte',
@@ -114,7 +114,7 @@ export const config = {
       WHATSAPP_NUMBER: 'whatsapp:+14155238886',
     },
   },
-  
+
   // Network Configuration
   NETWORK: {
     TIMEOUT: 30000, // 30 seconds
@@ -126,7 +126,7 @@ export const config = {
     // Allow HTTPS domains for standalone API
     ALLOWED_HTTPS_DOMAINS: ['api.pawsmart.com', 'staging-api.pawsmart.com'],
   },
-  
+
   // Storage Keys
   STORAGE_KEYS: {
     AUTH_TOKEN: '@PawSmart:authToken',
@@ -135,21 +135,21 @@ export const config = {
     ODOO_CREDENTIALS: '@PawSmart:odooCredentials',
     ADMIN_CREDENTIALS: '@PawSmart:adminCredentials',
   },
-  
+
   // App Configuration
   APP: {
     NAME: 'PawSmart',
     VERSION: '1.0.0',
     BUILD_NUMBER: 1,
   },
-  
+
   // API Configuration (for non-Odoo services)
   API: {
-    BASE_URL: __DEV__ 
+    BASE_URL: __DEV__
       ? 'https://api-dev.petnexus.com'  // Development API
       : 'https://api.petnexus.com',     // Production API
   },
-  
+
   // Debug Configuration - Use EAS build environment variables
   DEBUG: process.env.EXPO_PUBLIC_DEBUG === 'true' || __DEV__,
 

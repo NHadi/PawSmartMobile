@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -23,84 +23,48 @@ const CARD_WIDTH = (width - Spacing.lg * 2 - Spacing.md) / 2;
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'DoctorWalkIn'>;
 
-interface Clinic {
-  id: string;
-  name: string;
-  type: string;
-  rating: number;
-  location: string;
-  distance: string;
-  image: any;
-  isOpen24: boolean;
-}
-
-const mockClinics: Clinic[] = [
-  {
-    id: '1',
-    name: 'Banfield Hospital',
-    type: 'Klinik Hewan',
-    rating: 4.9,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-    isOpen24: true,
-  },
-  {
-    id: '2',
-    name: 'Banfield Hospital',
-    type: 'Klinik Hewan',
-    rating: 4.9,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-    isOpen24: false,
-  },
-  {
-    id: '3',
-    name: 'Hinsdale Hospital',
-    type: 'Klinik Hewan',
-    rating: 4.8,
-    location: 'Tebet, Jakarta Selatan',
-    distance: '2.1 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-    isOpen24: true,
-  },
-  {
-    id: '4',
-    name: 'Pet Care Clinic',
-    type: 'Klinik Hewan',
-    rating: 4.7,
-    location: 'Menteng, Jakarta Pusat',
-    distance: '4.2 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-    isOpen24: false,
-  },
-];
 
 // Theme colors
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
+
+import DoctorService, { Doctor as DoctorModel } from '../../services/DoctorService';
+import { ActivityIndicator } from 'react-native';
 
 export default function DoctorWalkInScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const [doctors, setDoctors] = useState<DoctorModel[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const renderClinicCard = (clinic: Clinic, index: number) => (
+  React.useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    try {
+      setLoading(true);
+      const response = await DoctorService.getDoctors({ offers_walk_in: true });
+      setDoctors(response.data);
+    } catch (error) {
+      console.error('Failed to fetching doctors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderDoctorCard = (doctor: DoctorModel, index: number) => (
     <TouchableOpacity
-      key={clinic.id}
+      key={doctor.id}
       style={[styles.clinicCard, index % 2 === 0 ? styles.cardLeft : styles.cardRight]}
-      onPress={() => navigation.navigate('DoctorDetail', { doctorId: clinic.id })}
+      onPress={() => navigation.navigate('DoctorDetail', { doctorId: doctor.id.toString() })}
       activeOpacity={0.7}
     >
       <View style={styles.clinicImageContainer}>
-        <Image source={clinic.image} style={styles.clinicImage} resizeMode="cover" />
-        {clinic.isOpen24 && (
+        <Image
+          source={doctor.photo ? { uri: doctor.photo } : require('../../../assets/product-placeholder.jpg')}
+          style={styles.clinicImage}
+          resizeMode="cover"
+        />
+        {doctor.is_available && (
           <View style={styles.badge24}>
             <Text style={styles.badge24Text}>24H</Text>
           </View>
@@ -108,16 +72,16 @@ export default function DoctorWalkInScreen() {
       </View>
 
       <View style={styles.clinicInfo}>
-        <Text style={styles.clinicName} numberOfLines={1}>{clinic.name}</Text>
-        <Text style={styles.clinicType}>{clinic.type}</Text>
+        <Text style={styles.clinicName} numberOfLines={1}>{doctor.name}</Text>
+        <Text style={styles.clinicType} numberOfLines={1}>{doctor.specialization || 'Dokter Hewan'}</Text>
 
         <View style={styles.ratingRow}>
           <MaterialIcons name="star" size={14} color="#FFB800" />
-          <Text style={styles.ratingText}>{clinic.rating}</Text>
+          <Text style={styles.ratingText}>{doctor.rating || 'N/A'}</Text>
         </View>
 
-        <Text style={styles.locationText} numberOfLines={1}>{clinic.location}</Text>
-        <Text style={styles.distanceText}>{clinic.distance}</Text>
+        <Text style={styles.locationText} numberOfLines={1}>{doctor.location || 'Jakarta'}</Text>
+        <Text style={styles.distanceText}>1.2 km</Text>
       </View>
     </TouchableOpacity>
   );
@@ -168,11 +132,21 @@ export default function DoctorWalkInScreen() {
 
           {/* Clinic Recommendations */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rekomendasi Klinik Untuk Kamu</Text>
+            <Text style={styles.sectionTitle}>Rekomendasi Dokter Untuk Kamu</Text>
 
-            <View style={styles.clinicsGrid}>
-              {mockClinics.map((clinic, index) => renderClinicCard(clinic, index))}
-            </View>
+            {loading ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={THEME.primary} />
+              </View>
+            ) : doctors.length > 0 ? (
+              <View style={styles.clinicsGrid}>
+                {doctors.map((doctor, index) => renderDoctorCard(doctor, index))}
+              </View>
+            ) : (
+              <Text style={{ textAlign: 'center', color: THEME.textSecondary, marginTop: 20 }}>
+                Tidak ada dokter Walk-In tersedia saat ini.
+              </Text>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>

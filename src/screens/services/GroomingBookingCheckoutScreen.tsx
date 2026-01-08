@@ -23,16 +23,7 @@ import { Address } from '../shop/AddressListScreen';
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'GroomingBookingCheckout'>;
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  textTertiary: Colors.text.tertiary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
 
 export default function GroomingBookingCheckoutScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -105,9 +96,9 @@ export default function GroomingBookingCheckoutScreen() {
 
   const calculateTotal = () => {
     const total = pricing.salonFee +
-                  (hasInsurance ? pricing.insurance : 0) +
-                  pricing.appFee -
-                  pricing.voucherDiscount;
+      (hasInsurance ? pricing.insurance : 0) +
+      pricing.appFee -
+      pricing.voucherDiscount;
     return total;
   };
 

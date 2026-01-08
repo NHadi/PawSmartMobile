@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Image,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
+import GroomingService, { Salon as SalonModel } from '../../services/GroomingService';
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'GroomingWalkIn'>;
 
@@ -30,54 +33,47 @@ interface Salon {
   image: any;
 }
 
-const mockSalons: Salon[] = [
-  {
-    id: '1',
-    name: 'Pets Corner',
-    type: 'Pet Shop, Grooming Spa',
-    rating: 4.9,
-    price: 90000,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '2',
-    name: 'Pets Corner',
-    type: 'Pet Shop, Grooming Spa',
-    rating: 4.9,
-    price: 90000,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '3',
-    name: 'Pets Corner',
-    type: 'Pet Shop, Grooming Spa',
-    rating: 4.9,
-    price: 90000,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '4',
-    name: 'Pets Corner',
-    type: 'Pet Shop, Grooming Spa',
-    rating: 4.9,
-    price: 90000,
-    location: 'Karet, Jakarta Pusat',
-    distance: '3.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-];
-
 export default function GroomingWalkInScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [selectedFilter, setSelectedFilter] = useState('Terdekat');
+  const [salons, setSalons] = useState<Salon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const filters = ['Terdekat', 'Populer', 'Harga'];
+
+  const fetchSalons = async () => {
+    try {
+      const response = await GroomingService.getSalons(); // Add params like city if needed
+
+      const mappedSalons: Salon[] = response.data.map((item: any) => ({
+        id: item.id.toString(),
+        name: item.name,
+        type: 'Pet Shop, Grooming Spa', // Hardcoded for now, or derive from partner_type
+        rating: item.rating || 4.5, // Default if missing
+        price: item.price_start || 50000,
+        location: `${item.district || ''} ${item.city || item.address}`,
+        distance: '2.5 km', // Placeholder
+        image: item.image_url ? { uri: item.image_url } : require('../../../assets/product-placeholder.jpg'),
+      }));
+
+      setSalons(mappedSalons);
+    } catch (error) {
+      console.error('Failed to fetch grooming salons:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSalons();
+  }, []);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchSalons();
+  }, []);
 
   const renderSalonCard = ({ item }: { item: Salon }) => (
     <TouchableOpacity
@@ -85,22 +81,22 @@ export default function GroomingWalkInScreen() {
       onPress={() => navigation.navigate('GroomingDetail', { groomingId: item.id })}
     >
       <Image source={item.image} style={styles.salonImage} />
-      
+
       <View style={styles.salonInfo}>
-        <Text style={styles.salonName}>{item.name}</Text>
-        <Text style={styles.salonType}>{item.type}</Text>
-        
+        <Text style={styles.salonName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.salonType} numberOfLines={1}>{item.type}</Text>
+
         <View style={styles.salonMeta}>
           <View style={styles.rating}>
             <MaterialIcons name="star" size={16} color="#FFD700" />
             <Text style={styles.ratingText}>{item.rating}</Text>
           </View>
         </View>
-        
+
         <Text style={styles.salonPrice}>Rp {item.price.toLocaleString('id-ID')}</Text>
-        
+
         <View style={styles.locationRow}>
-          <Text style={styles.location}>{item.location}</Text>
+          <Text style={styles.location} numberOfLines={1}>{item.location}</Text>
           <Text style={styles.distance}>{item.distance}</Text>
         </View>
       </View>
@@ -111,7 +107,7 @@ export default function GroomingWalkInScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -165,7 +161,7 @@ export default function GroomingWalkInScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        
+
         <TouchableOpacity style={styles.filterButton}>
           <MaterialIcons name="tune" size={20} color={Colors.text.secondary} />
           <Text style={styles.filterButtonText}>Filter</Text>
@@ -173,15 +169,29 @@ export default function GroomingWalkInScreen() {
       </View>
 
       {/* Salon Grid */}
-      <FlatList
-        data={mockSalons}
-        renderItem={renderSalonCard}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.salonList}
-        columnWrapperStyle={styles.salonRow}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary.main} />
+        </View>
+      ) : (
+        <FlatList
+          data={salons}
+          renderItem={renderSalonCard}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={styles.salonList}
+          columnWrapperStyle={styles.salonRow}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text>Tidak ada salon ditemukan.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }

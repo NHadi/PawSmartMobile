@@ -35,36 +35,29 @@ interface Pet {
   image: any;
 }
 
-const mockPet: Pet = {
-  id: '1',
-  name: 'Name Pet',
-  breed: 'Anjing, Chihuahua',
-  gender: 'Jantan',
-  age: '1 tahun',
-  image: require('../../../assets/product-placeholder.jpg'),
-};
+import HotelService from '../../services/HotelService';
+import { ActivityIndicator } from 'react-native';
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
-
+import { THEME } from '../../constants/theme';
 export default function HotelBookingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<HotelBookingRouteProp>();
   const { hotelId, hotelName, roomId, roomName, checkInDate, checkOutDate, price } = route.params;
   const { user } = useAuth();
 
-  const [selectedPet, setSelectedPet] = useState<Pet>(mockPet);
+  const [selectedPet, setSelectedPet] = useState<Pet>({
+    id: '1', // Should fetch user pets
+    name: 'Default Pet',
+    breed: 'Unknown',
+    gender: 'Unknown',
+    age: 'Unknown',
+    image: require('../../../assets/product-placeholder.jpg')
+  });
   const [isPetHealthy, setIsPetHealthy] = useState<boolean | null>(null);
   const [specialRequests, setSpecialRequests] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Expandable sections
   const [customerExpanded, setCustomerExpanded] = useState(true);
@@ -110,7 +103,7 @@ export default function HotelBookingScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isPetHealthy) {
       Alert.alert('Perhatian', 'Hewan peliharaan harus dalam keadaan sehat untuk menginap di hotel.');
       return;
@@ -120,17 +113,33 @@ export default function HotelBookingScreen() {
       return;
     }
 
-    // Navigate to payment or success
-    Alert.alert(
-      'Permintaan Terkirim',
-      'Permintaan booking hotel Anda telah terkirim. Tim kami akan menghubungi Anda segera.',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('ServicesHome'),
-        },
-      ]
-    );
+    try {
+      setSubmitting(true);
+      await HotelService.createBooking({
+        partner_id: Number(hotelId),
+        room_id: Number(roomId),
+        pet_id: Number(selectedPet.id), // Ensure valid pet ID from user selection
+        check_in_date: checkInDate,
+        check_out_date: checkOutDate,
+        special_requests: specialRequests
+      });
+
+      Alert.alert(
+        'Permintaan Terkirim',
+        'Permintaan booking hotel Anda telah terkirim. Tim kami akan menghubungi Anda segera.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('ServicesHome'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error("Booking error:", error);
+      Alert.alert('Gagal', error.message || 'Gagal membuat booking.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderSection = (
@@ -349,7 +358,11 @@ export default function HotelBookingScreen() {
             onPress={handleSubmit}
             disabled={!termsAccepted}
           >
-            <Text style={styles.submitButtonText}>Kirim Permintaan</Text>
+            {submitting ? (
+              <ActivityIndicator color={THEME.white} />
+            ) : (
+              <Text style={styles.submitButtonText}>Kirim Permintaan</Text>
+            )}
           </TouchableOpacity>
         </View>
 

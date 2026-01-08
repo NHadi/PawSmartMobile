@@ -61,7 +61,7 @@ export type RootStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
-  OTP: { 
+  OTP: {
     phoneNumber: string;
     registrationData?: {
       username: string;
@@ -152,8 +152,8 @@ export type HomeStackParamList = {
   DoctorCart: undefined;
   MyOrders: { orderId?: string };
   AddressList: { isSelecting?: boolean };
-  AddAddress: { 
-    address?: any; 
+  AddAddress: {
+    address?: any;
     isEditing?: boolean;
   };
   LocationPicker: {
@@ -169,10 +169,10 @@ export type HomeStackParamList = {
   MapPicker: {
     onLocationSelected?: (location: any) => void;
   };
-  PaymentProcess: { 
-    orderId: string | number; 
-    orderName: string; 
-    totalAmount: number; 
+  PaymentProcess: {
+    orderId: string | number;
+    orderName: string;
+    totalAmount: number;
     paymentMethod: any;
   };
   PaymentMethodSelection: {
@@ -192,7 +192,7 @@ export type HomeStackParamList = {
   };
   OrderDetail: { orderId: string };
   CancelOrder: { orderId: string };
-  OrderSummary: { 
+  OrderSummary: {
     orderId?: string;
     items?: any[];
     address?: any;
@@ -213,6 +213,9 @@ export type ServicesStackParamList = {
   DoctorBookingCheckout: {
     doctorId: string;
     doctorName: string;
+    doctorImage?: string;
+    consultationFee: number;
+    homeServiceFee: number;
     date: string;
     timeSlot: string;
     petId?: string;
@@ -282,8 +285,8 @@ export type ProfileStackParamList = {
   PetDetail: { petId: string };
   EditPet: { petId: string };
   MyAddress: undefined;
-  AddAddress: { 
-    address?: any; 
+  AddAddress: {
+    address?: any;
     isEditing?: boolean;
     selectedLocation?: any;
   };

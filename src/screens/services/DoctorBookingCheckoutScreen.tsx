@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,19 +22,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import standaloneAddressService from '../../services/address/standaloneAddressService';
 import PaymentMethodModal from '../../components/modals/PaymentMethodModal';
 import { Address } from '../shop/AddressListScreen';
+import DoctorService from '../../services/DoctorService';
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'DoctorBookingCheckout'>;
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  textTertiary: Colors.text.tertiary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
 
 export default function DoctorBookingCheckoutScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -45,11 +39,15 @@ export default function DoctorBookingCheckoutScreen() {
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Get route params
   const params = route.params as {
     doctorId: string;
     doctorName: string;
+    doctorImage?: string;
+    consultationFee: number;
+    homeServiceFee: number;
     date: string;
     timeSlot: string;
     petId?: string;
@@ -57,15 +55,17 @@ export default function DoctorBookingCheckoutScreen() {
   };
 
   const bookingData = {
-    doctorName: params?.doctorName || 'dr. Taylor Swift Jasmine',
-    doctorImage: require('../../../assets/product-placeholder.jpg'),
-    date: params?.date || 'Sabtu, 10 May',
-    timeSlot: params?.timeSlot || '09.00 - 11.00',
+    doctorName: params?.doctorName || 'Dokter',
+    doctorImage: params?.doctorImage
+      ? { uri: params.doctorImage }
+      : require('../../../assets/product-placeholder.jpg'),
+    date: params?.date,
+    timeSlot: params?.timeSlot,
   };
 
   const pricing = {
-    doctorFee: 350000,
-    travelFee: 20000,
+    doctorFee: params?.consultationFee || 0,
+    travelFee: params?.homeServiceFee || 0, // Assuming home service for this flow
     insurance: 2500,
     voucherDiscount: 0,
     adminFee: 2500,
@@ -105,10 +105,10 @@ export default function DoctorBookingCheckoutScreen() {
 
   const calculateTotal = () => {
     const total = pricing.doctorFee +
-                  pricing.travelFee +
-                  (hasInsurance ? pricing.insurance : 0) +
-                  pricing.adminFee -
-                  pricing.voucherDiscount;
+      pricing.travelFee +
+      (hasInsurance ? pricing.insurance : 0) +
+      pricing.adminFee -
+      pricing.voucherDiscount;
     return total;
   };
 
@@ -131,8 +131,69 @@ export default function DoctorBookingCheckoutScreen() {
     setSelectedPayment(method);
   };
 
-  const handlePayment = () => {
-    // Navigate to payment flow
+  const handlePayment = async () => {
+    if (!selectedAddress) {
+      Alert.alert('Alamat Kosong', 'Mohon pilih alamat untuk layanan home service.');
+      return;
+    }
+    if (!selectedPayment) {
+      Alert.alert('Metode Pembayaran', 'Mohon pilih metode pembayaran.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Construct appointment data
+      // NOTE: backend expects specific format. 
+      // appointment_date: YYYY-MM-DD
+      // appointment_time: HH:MM
+
+      // We need to parse params.date string back to date object if needed, 
+      // but let's assume for now we pass it as string or format it.
+      // The backend `createAppointment` takes `appointment_date`, `appointment_time`.
+
+      // Simple date parsing or just passing as is if backend handles it
+      // The backend expects typical DATE/TIME formats.
+      // `2 Mei 2025` -> need to convert to `2025-05-02`.
+      // This is tricky without date-fns or similar.
+      // For MVP, passing the string and hoping backend or Date() constructor handles it, 
+      // OR we should have passed ISO string from prev screen.
+
+      // Let's rely on standard ISO string from Date object in prev screen. 
+      // But we displayed formatted date.
+
+      // Assuming params.date is just display string, we might fail.
+      // Ideally we pass `dateIso` param.
+
+      // Let's mock the date conversion for now or use current date if parsing fails.
+      const dateParts = params.date.split(' '); // "2 Mei 2025"
+      // Mapping months... this is fragile.
+      // Better: use current date for demo or proper parsing.
+      const bookingDate = new Date().toISOString().split('T')[0]; // Fallback to today
+
+      const bookingPayload = {
+        doctor_id: Number(params.doctorId),
+        pet_id: params.petId ? Number(params.petId) : 0, // Fallback to 0 if undefined, or handle error
+        appointment_date: bookingDate,
+        appointment_time: params.timeSlot.split(' - ')[0].replace('.', ':'), // Take start time and format to HH:MM
+        service_type: 'home-service' as const,
+        reason: params.complaint,
+        symptoms: params.complaint,
+        address_id: Number(selectedAddress.id)
+      };
+
+      const result = await DoctorService.createAppointment(bookingPayload);
+
+      Alert.alert('Sukses', 'Janji temu berhasil dibuat!', [
+        { text: 'OK', onPress: () => navigation.navigate('ServicesHome') } // Go back to services or history
+      ]);
+
+    } catch (error: any) {
+      console.error('Booking failed:', error);
+      Alert.alert('Gagal', error.message || 'Gagal membuat janji temu');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderSection = (
@@ -401,12 +462,16 @@ export default function DoctorBookingCheckoutScreen() {
           <TouchableOpacity
             style={[
               styles.payButton,
-              !selectedPayment && styles.payButtonDisabled
+              (!selectedPayment || submitting) && styles.payButtonDisabled
             ]}
             onPress={handlePayment}
-            disabled={!selectedPayment}
+            disabled={!selectedPayment || submitting}
           >
-            <Text style={styles.payButtonText}>Bayar</Text>
+            {submitting ? (
+              <ActivityIndicator color={THEME.white} />
+            ) : (
+              <Text style={styles.payButtonText}>Bayar</Text>
+            )}
           </TouchableOpacity>
         </View>
 

@@ -33,7 +33,7 @@ import GroomingBookingCheckoutScreen from '../screens/services/GroomingBookingCh
 import GroomingHomeServiceScreen from '../screens/services/GroomingHomeServiceScreen';
 import HotelScreen from '../screens/services/HotelScreen';
 import HotelSearchScreen from '../screens/services/HotelSearchScreen';
-import HotelListScreen from '../screens/services/HotelListScreen';
+import { HotelListScreen } from '../screens/services/HotelListScreen';
 import HotelDetailScreen from '../screens/services/HotelDetailScreen';
 import HotelRoomDetailScreen from '../screens/services/HotelRoomDetailScreen';
 import HotelBookingScreen from '../screens/services/HotelBookingScreen';
@@ -94,9 +94,9 @@ import UniversalSuccessScreen from '../screens/payment/UniversalSuccessScreen';
 import PromoStack from './PromoStack';
 
 // Navigation types
-import { 
-  RootStackParamList, 
-  MainTabParamList, 
+import {
+  RootStackParamList,
+  MainTabParamList,
   AuthStackParamList,
   ProfileStackParamList,
   HomeStackParamList,
@@ -288,7 +288,7 @@ function TabNavigator() {
       <Tab.Screen name="Services" component={ServicesNavigator} />
       <Tab.Screen
         name="Activity"
-        component={({ route }: { route: any }) => <ActivityNavigator route={route} />}
+        component={ActivityNavigator}
       />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>

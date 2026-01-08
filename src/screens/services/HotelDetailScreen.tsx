@@ -55,100 +55,38 @@ interface Hotel {
   image: any;
 }
 
-const mockImages = [
-  require('../../../assets/product-placeholder.jpg'),
-  require('../../../assets/product-placeholder.jpg'),
-  require('../../../assets/product-placeholder.jpg'),
-  require('../../../assets/product-placeholder.jpg'),
-];
+import HotelService, { HotelDetail as HotelDetailModel } from '../../services/HotelService';
+import { ActivityIndicator } from 'react-native';
 
-const mockRooms: Room[] = [
-  {
-    id: '1',
-    name: 'Dog Premium Room',
-    petType: 'Anjing',
-    size: '3x3m',
-    price: 'Rp80.000',
-    features: ['2 tempat makan', '1 Ekor'],
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '2',
-    name: 'Dog VIP Room',
-    petType: 'Anjing',
-    size: '5x5m',
-    price: 'Rp80.000',
-    features: ['2 tempat makan', '1-2 Ekor'],
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-];
-
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    userName: 'User',
-    date: '2 Juni 2025',
-    comment: 'This is the first time I have used this service. The room was very powerful!',
-    rating: 5,
-  },
-  {
-    id: '2',
-    userName: 'User',
-    date: '2 Juni 2025',
-    comment: 'This is the first time I have used this service. The room was very powerful!',
-    rating: 5,
-  },
-];
-
-const mockOtherHotels: Hotel[] = [
-  {
-    id: '10',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '11',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-];
-
-const facilities = [
-  { id: '1', name: 'AC', icon: 'air-conditioner' },
-  { id: '2', name: 'WiFi', icon: 'wifi' },
-  { id: '3', name: 'Kulkas', icon: 'fridge-outline' },
-  { id: '4', name: 'CCTV', icon: 'cctv' },
-];
-
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
 
 export default function HotelDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<HotelDetailRouteProp>();
   const { hotelId } = route.params;
 
+  const [hotel, setHotel] = useState<HotelDetailModel | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [expandedRules, setExpandedRules] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  React.useEffect(() => {
+    fetchHotelDetail();
+  }, [hotelId]);
+
+  const fetchHotelDetail = async () => {
+    try {
+      setLoading(true);
+      const data = await HotelService.getHotelDetail(Number(hotelId));
+      setHotel(data);
+    } catch (error) {
+      console.error('Failed to fetch hotel detail:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -156,8 +94,20 @@ export default function HotelDetailScreen() {
     setCurrentImageIndex(index);
   };
 
-  const handleRoomPress = (room: Room) => {
-    navigation.navigate('HotelRoomDetail', { hotelId, roomId: room.id });
+  const handleRoomPress = (room: any) => {
+    // navigation.navigate('HotelRoomDetail', { hotelId, roomId: room.id });
+    // Navigate to booking directly for now as per requirement shortcut or keep detail logic
+    if (hotel) {
+      navigation.navigate('HotelBooking', {
+        hotelId: hotel.id.toString(),
+        hotelName: hotel.name,
+        roomId: room.id.toString(),
+        roomName: room.name,
+        checkInDate: new Date().toISOString().split('T')[0], // Default today
+        checkOutDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Default tomorrow
+        price: Number(room.price)
+      });
+    }
   };
 
   const handleOtherHotelPress = (hotel: Hotel) => {
@@ -166,8 +116,8 @@ export default function HotelDetailScreen() {
 
   const handleSelectRoom = () => {
     // Scroll to rooms section or select first room
-    if (mockRooms.length > 0) {
-      navigation.navigate('HotelRoomDetail', { hotelId, roomId: mockRooms[0].id });
+    if (hotel?.rooms && hotel.rooms.length > 0) {
+      handleRoomPress(hotel.rooms[0]);
     }
   };
 
@@ -211,24 +161,36 @@ export default function HotelDetailScreen() {
     </View>
   );
 
-  const renderOtherHotelCard = (hotel: Hotel) => (
+  const renderOtherHotelCard = (hotel: any) => (
     <TouchableOpacity
       key={hotel.id}
       style={styles.otherHotelCard}
       onPress={() => handleOtherHotelPress(hotel)}
       activeOpacity={0.7}
     >
-      <Image source={hotel.image} style={styles.otherHotelImage} resizeMode="cover" />
+      <Image
+        source={hotel.image ? { uri: hotel.image } : require('../../../assets/product-placeholder.jpg')}
+        style={styles.otherHotelImage}
+        resizeMode="cover"
+      />
       <View style={styles.otherHotelInfo}>
         <Text style={styles.otherHotelName} numberOfLines={1}>{hotel.name}</Text>
         <View style={styles.ratingRow}>
           <MaterialIcons name="star" size={12} color="#FFB800" />
           <Text style={styles.ratingText}>{hotel.rating}</Text>
         </View>
-        <Text style={styles.otherHotelPrice}>{hotel.price}<Text style={styles.perNight}>/malam</Text></Text>
+        <Text style={styles.otherHotelPrice}>Rp{hotel.startPrice?.toLocaleString('id-ID')}<Text style={styles.perNight}>/malam</Text></Text>
       </View>
     </TouchableOpacity>
   );
+
+  if (loading || !hotel) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={THEME.primary} />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -242,7 +204,7 @@ export default function HotelDetailScreen() {
           <View style={styles.carouselContainer}>
             <FlatList
               ref={flatListRef}
-              data={mockImages}
+              data={hotel.images && hotel.images.length ? hotel.images.map(img => ({ uri: img })) : [require('../../../assets/product-placeholder.jpg')]}
               renderItem={renderImageItem}
               keyExtractor={(_, index) => index.toString()}
               horizontal
@@ -282,18 +244,18 @@ export default function HotelDetailScreen() {
             <View style={styles.imageIndicator}>
               <MaterialIcons name="photo-library" size={16} color={THEME.white} />
               <Text style={styles.imageIndicatorText}>
-                {currentImageIndex + 1}/{mockImages.length}
+                {currentImageIndex + 1}/{hotel.images?.length || 1}
               </Text>
             </View>
           </View>
 
           {/* Hotel Info */}
           <View style={styles.hotelInfo}>
-            <Text style={styles.hotelName}>Happy Paws Hotel</Text>
+            <Text style={styles.hotelName}>{hotel.name}</Text>
             <Text style={styles.hotelType}>Hotel Hewan, Pet Boarding</Text>
             <View style={styles.locationRow}>
-              <Text style={styles.locationText}>Karet, Jakarta Timur</Text>
-              <Text style={styles.distanceText}>3.4 km</Text>
+              <Text style={styles.locationText}>{hotel.city}, {hotel.address}</Text>
+              <Text style={styles.distanceText}>{hotel.distance || '1.2 km'}</Text>
             </View>
             <TouchableOpacity style={styles.directButton}>
               <MaterialIcons name="directions" size={20} color={THEME.primary} />
@@ -305,8 +267,7 @@ export default function HotelDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tentang Hotel</Text>
             <Text style={styles.aboutText}>
-              Lorem ipsum dolor sit amet consectetur. Tellus odio hac consectetur adipiscing a.
-              Nisl quam pretium tortor massa integer orci suspendisse etiam
+              {hotel.description || 'Deskripsi hotel belum tersedia.'}
             </Text>
           </View>
 
@@ -314,23 +275,35 @@ export default function HotelDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Fasilitas umum</Text>
             <View style={styles.facilitiesGrid}>
-              {facilities.map(facility => (
-                <View key={facility.id} style={styles.facilityItem}>
+              {hotel.facilities && hotel.facilities.length > 0 ? hotel.facilities.map((fac, index) => (
+                <View key={index} style={styles.facilityItem}>
                   <MaterialCommunityIcons
-                    name={facility.icon as any}
+                    name="check-circle-outline" // Generic icon if we have strings
                     size={24}
                     color={THEME.textSecondary}
                   />
-                  <Text style={styles.facilityName}>{facility.name}</Text>
+                  <Text style={styles.facilityName}>{fac}</Text>
                 </View>
-              ))}
+              )) : (
+                <Text style={styles.aboutText}>Tidak ada informasi fasilitas</Text>
+              )}
             </View>
           </View>
 
           {/* Available Rooms */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Kamar Tersedia</Text>
-            {mockRooms.map(room => renderRoomCard(room))}
+            {hotel.rooms && hotel.rooms.length > 0 ? (
+              hotel.rooms.map(room => renderRoomCard({
+                ...room,
+                id: room.id.toString(),
+                image: room.image ? { uri: room.image } : require('../../../assets/product-placeholder.jpg'),
+                price: `Rp${Number(room.price).toLocaleString('id-ID')}`,
+                features: room.features ? room.features : [], // Ensure array
+              } as any))
+            ) : (
+              <Text style={styles.aboutText}>Tidak ada kamar tersedia.</Text>
+            )}
           </View>
 
           {/* Rules & Terms */}
@@ -364,27 +337,22 @@ export default function HotelDetailScreen() {
                 <Text style={styles.seeAllText}>Lihat Semua Ulasan</Text>
               </TouchableOpacity>
             </View>
-            {mockReviews.map(review => renderReviewCard(review))}
+            {hotel.reviews && hotel.reviews.length > 0 ? (
+              hotel.reviews.map(review => renderReviewCard(review as any))
+            ) : (
+              <Text style={styles.aboutText}>Belum ada ulasan.</Text>
+            )}
           </View>
 
           {/* Other Hotels */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Hotel Lainnya</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.otherHotelsScroll}
-            >
-              {mockOtherHotels.map(hotel => renderOtherHotelCard(hotel))}
-            </ScrollView>
-          </View>
+          {/* Omitted for now or fetch similar hotels */}
         </ScrollView>
 
         {/* Bottom Bar */}
         <View style={styles.bottomBar}>
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Mulai dari</Text>
-            <Text style={styles.totalPrice}>Rp80.000</Text>
+            <Text style={styles.totalPrice}>Rp{hotel.startPrice?.toLocaleString('id-ID')}</Text>
           </View>
           <TouchableOpacity style={styles.selectButton} onPress={handleSelectRoom}>
             <Text style={styles.selectButtonText}>Pilih Kamar</Text>

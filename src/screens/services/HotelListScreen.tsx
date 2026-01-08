@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { THEME } from '../../constants/theme';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
@@ -34,80 +35,40 @@ interface Hotel {
 
 type FilterType = 'terdekat' | 'terlaris' | 'harga';
 
-const mockHotels: Hotel[] = [
-  {
-    id: '1',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    originalPrice: 'Rp90.000',
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '2',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    originalPrice: 'Rp90.000',
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '3',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    originalPrice: 'Rp90.000',
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '4',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    originalPrice: 'Rp90.000',
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '5',
-    name: 'Happy Paws Hotel',
-    rating: 4.9,
-    reviews: 1000,
-    originalPrice: 'Rp90.000',
-    price: 'Rp80.000',
-    location: 'Karet, Jakarta Pusat',
-    distance: '1.4 km',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-];
+import HotelService, { Hotel as HotelModel } from '../../services/HotelService';
+import { ActivityIndicator } from 'react-native';
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
-
-export default function HotelListScreen() {
+export const HotelListScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<HotelListRouteProp>();
   const { location, date, petType } = route.params || {};
 
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('terdekat');
+  const [hotels, setHotels] = useState<HotelModel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchHotels();
+  }, [location, petType]);
+
+  const fetchHotels = async () => {
+    try {
+      setLoading(true);
+      const response = await HotelService.getHotels({
+        city: location,
+        petType: petType,
+      });
+      setHotels(response.data);
+    } catch (error) {
+      console.error('Failed to fetch hotels:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
 
   const handleHotelPress = (hotel: Hotel) => {
     navigation.navigate('HotelDetail', { hotelId: hotel.id });
@@ -150,7 +111,11 @@ export default function HotelListScreen() {
       onPress={() => handleHotelPress(hotel)}
       activeOpacity={0.7}
     >
-      <Image source={hotel.image} style={styles.hotelImage} resizeMode="cover" />
+      <Image
+        source={hotel.image ? { uri: hotel.image } : require('../../../assets/product-placeholder.jpg')}
+        style={styles.hotelImage}
+        resizeMode="cover"
+      />
       <View style={styles.hotelInfo}>
         <Text style={styles.hotelName}>{hotel.name}</Text>
         <View style={styles.ratingRow}>
@@ -158,13 +123,13 @@ export default function HotelListScreen() {
           <Text style={styles.ratingText}>{hotel.rating}</Text>
           <Text style={styles.reviewsText}>{hotel.reviews}rb ulasan</Text>
         </View>
-        <Text style={styles.originalPrice}>{hotel.originalPrice}</Text>
+        <Text style={styles.originalPrice}>Rp{(hotel.startPrice * 1.2).toLocaleString('id-ID')}</Text>
         <Text style={styles.currentPrice}>
-          {hotel.price}
+          Rp{hotel.startPrice.toLocaleString('id-ID')}
           <Text style={styles.perNight}>/malam</Text>
         </Text>
         <View style={styles.locationRow}>
-          <Text style={styles.locationText}>{hotel.location}</Text>
+          <Text style={styles.locationText}>{hotel.city}, {hotel.address}</Text>
           <Text style={styles.distanceText}>{hotel.distance}</Text>
         </View>
       </View>
@@ -228,7 +193,13 @@ export default function HotelListScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {mockHotels.map(hotel => renderHotelCard(hotel))}
+          {loading ? (
+            <View style={{ padding: 20 }}>
+              <ActivityIndicator size="large" color={THEME.primary} />
+            </View>
+          ) : (
+            hotels.map(hotel => renderHotelCard(hotel as any))
+          )}
         </ScrollView>
       </SafeAreaView>
     </>

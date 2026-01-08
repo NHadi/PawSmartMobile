@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Image,
   Dimensions,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -18,19 +20,12 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
+import GroomingService, { SalonDetail } from '../../services/GroomingService';
+import petService, { Pet } from '../../services/petService';
 
 const { width } = Dimensions.get('window');
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'GroomingDetail'>;
-
-interface Pet {
-  id: string;
-  name: string;
-  breed: string;
-  gender: string;
-  age: string;
-  image: any;
-}
 
 interface TimeSlot {
   id: string;
@@ -38,19 +33,10 @@ interface TimeSlot {
   isAvailable: boolean;
 }
 
-const mockPet: Pet = {
-  id: '1',
-  name: 'Name Pet',
-  breed: 'Anjing, Chihuahua',
-  gender: 'Jantan',
-  age: '1 tahun',
-  image: require('../../../assets/product-placeholder.jpg'),
-};
-
-const mockTimeSlots: TimeSlot[] = [
+const defaultTimeSlots: TimeSlot[] = [
   { id: '1', time: '09.00 - 11.00', isAvailable: true },
   { id: '2', time: '12.00 - 14.00', isAvailable: true },
-  { id: '3', time: '15.00 - 18.00', isAvailable: false },
+  { id: '3', time: '15.00 - 18.00', isAvailable: true },
 ];
 
 export default function GroomingDetailScreen() {
@@ -58,11 +44,51 @@ export default function GroomingDetailScreen() {
   const route = useRoute();
   const { groomingId } = route.params as { groomingId: string };
 
-  const [selectedPet, setSelectedPet] = useState<Pet>(mockPet);
+  const [salon, setSalon] = useState<SalonDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState('2 Mei 2025');
+  const [selectedDate, setSelectedDate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  useEffect(() => {
+    // Set initial date string
+    const today = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    setSelectedDate(`${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`);
+
+    fetchData();
+  }, [groomingId]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [salonRes, petsRes] = await Promise.all([
+        GroomingService.getSalonDetail(Number(groomingId)),
+        petService.getPets()
+      ]);
+
+      setSalon(salonRes.data);
+
+      // Handle Pets
+      // PetService might return array or { data: [] } depending on implementation. 
+      // Assuming array based on typical service pattern, or checking response.
+      const petList = Array.isArray(petsRes) ? petsRes : (petsRes as any).data || [];
+      setPets(petList);
+      if (petList.length > 0) {
+        setSelectedPet(petList[0]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch details:', error);
+      Alert.alert('Error', 'Gagal memuat detail salon.');
+      navigation.goBack();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDatePicker = () => {
     setShowDatePicker(true);
@@ -72,7 +98,7 @@ export default function GroomingDetailScreen() {
     const currentDate = selectedDate || date;
     setShowDatePicker(Platform.OS === 'ios');
     setDate(currentDate);
-    
+
     // Format date to DD MMM YYYY
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     const formatted = `${currentDate.getDate()} ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
@@ -80,21 +106,45 @@ export default function GroomingDetailScreen() {
   };
 
   const handleBooking = () => {
+    if (!selectedPet) {
+      Alert.alert('Perhatian', 'Silakan pilih hewan peliharaan terlebih dahulu.');
+      return;
+    }
+    if (!selectedTimeSlot) {
+      Alert.alert('Perhatian', 'Silakan pilih waktu kedatangan.');
+      return;
+    }
+    if (!selectedPet.id) return;
+
     navigation.navigate('GroomingBookingCheckout', {
       groomingId: groomingId,
-      salonName: 'Pets Corner',
+      salonName: salon?.name || 'Salon',
       date: selectedDate,
-      timeSlot: mockTimeSlots.find(s => s.id === selectedTimeSlot)?.time || '11.00',
-      petId: selectedPet.id,
+      timeSlot: defaultTimeSlots.find(s => s.id === selectedTimeSlot)?.time || '09.00',
+      petId: String(selectedPet.id),
       serviceType: 'walkIn',
+      // Pass price if needed
     });
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.primary.main} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!salon) return null;
+
+  // Use image from salon or placeholder
+  const imageSource = salon.image_url ? { uri: salon.image_url } : require('../../../assets/product-placeholder.jpg');
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -109,29 +159,25 @@ export default function GroomingDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Salon Image */}
         <View style={styles.salonImageContainer}>
-          <Image 
-            source={require('../../../assets/product-placeholder.jpg')} 
+          <Image
+            source={imageSource}
             style={styles.salonImage}
           />
           <View style={styles.ratingBadge}>
             <MaterialIcons name="star" size={16} color="#FFD700" />
-            <Text style={styles.ratingText}>4.9</Text>
-          </View>
-          <View style={styles.photoCountBadge}>
-            <MaterialIcons name="photo-library" size={16} color={Colors.text.white} />
-            <Text style={styles.photoCountText}>24</Text>
+            <Text style={styles.ratingText}>{String(salon.rating || 4.8)}</Text>
           </View>
         </View>
 
         {/* Salon Info */}
         <View style={styles.salonInfo}>
-          <Text style={styles.salonName}>Pets Corner</Text>
+          <Text style={styles.salonName}>{salon.name}</Text>
           <Text style={styles.salonType}>Salon Hewan, Grooming Spa</Text>
           <View style={styles.locationInfo}>
-            <Text style={styles.locationText}>Karet, Jakarta Timur</Text>
-            <Text style={styles.distanceText}>3.4 km</Text>
+            <Text style={styles.locationText}>{salon.city || salon.address}</Text>
+            <Text style={styles.distanceText}>2.5 km</Text>
           </View>
-          
+
           <TouchableOpacity style={styles.directButton}>
             <MaterialIcons name="directions" size={20} color={Colors.primary.main} />
             <Text style={styles.directButtonText}>Direct</Text>
@@ -142,8 +188,7 @@ export default function GroomingDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tentang Salon</Text>
           <Text style={styles.aboutText}>
-            Lorem ipsum dolor sit amet consectetur. Tellus odio hac consectetur adipiscing a. 
-            Nisl quam pretium tortor massa integer orci suspendisse etiam
+            {salon.description || 'Layanan grooming profesional untuk hewan kesayangan Anda.'}
           </Text>
         </View>
 
@@ -151,19 +196,26 @@ export default function GroomingDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Pilih Hewan Peliharaan</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('PetSelection')}>
-              <Text style={styles.pilihText}>Pilih</Text>
-            </TouchableOpacity>
+            {/* Could navigate to pet selection screen if implemented */}
           </View>
-          
-          <View style={styles.petCard}>
-            <Image source={selectedPet.image} style={styles.petImage} />
-            <View style={styles.petInfo}>
-              <Text style={styles.petName}>{selectedPet.name}</Text>
-              <Text style={styles.petDetails}>{selectedPet.breed}</Text>
-              <Text style={styles.petDetails}>{selectedPet.gender}, {selectedPet.age}</Text>
+
+          {selectedPet ? (
+            <View style={styles.petCard}>
+              <Image
+                source={selectedPet.photo ? { uri: selectedPet.photo } : require('../../../assets/product-placeholder.jpg')}
+                style={styles.petImage}
+              />
+              <View style={styles.petInfo}>
+                <Text style={styles.petName}>{selectedPet.name}</Text>
+                <Text style={styles.petDetails}>{selectedPet.breed || 'Unknown Breed'}</Text>
+                <Text style={styles.petDetails}>{selectedPet.gender === 'male' ? 'Jantan' : 'Betina'}, {selectedPet.age || '?'} thn</Text>
+              </View>
             </View>
-          </View>
+          ) : (
+            <TouchableOpacity style={styles.addPetButton} onPress={() => navigation.navigate('ServicesHome')}>
+              <Text style={styles.pilihText}>Tambah / Pilih Hewan di Profil</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Date Selection */}
@@ -181,12 +233,12 @@ export default function GroomingDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Periode Waktu Kedatangan</Text>
           <Text style={styles.timeSlotNote}>
-            Pilih Waktu yang kamu inginkan untuk datang ke lokasi. 
+            Pilih Waktu yang kamu inginkan untuk datang ke lokasi.
             Pastikan kamu datang tepat waktu ya.
           </Text>
-          
+
           <View style={styles.timeSlots}>
-            {mockTimeSlots.map((slot) => (
+            {defaultTimeSlots.map((slot) => (
               <TouchableOpacity
                 key={slot.id}
                 style={[
@@ -213,13 +265,16 @@ export default function GroomingDetailScreen() {
       {/* Bottom Price and Book Button */}
       <View style={styles.bottomContainer}>
         <View style={styles.priceContainer}>
-          <Text style={styles.totalPrice}>Rp 90.000</Text>
+          <Text style={styles.totalPrice}>
+            {/* Display start price or first service price */}
+            Rp {(Number(salon.services?.[0]?.price) || 50000).toLocaleString('id-ID')}
+          </Text>
         </View>
         <TouchableOpacity style={styles.bookButton} onPress={handleBooking}>
           <Text style={styles.bookButtonText}>Bayar</Text>
         </TouchableOpacity>
       </View>
-      
+
       {/* Date Picker Modal */}
       {showDatePicker && (
         <DateTimePicker
@@ -482,4 +537,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.semibold,
     color: Colors.text.white,
   },
+  addPetButton: {
+    padding: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    borderRadius: BorderRadius.lg,
+    borderStyle: 'dashed',
+  }
 });

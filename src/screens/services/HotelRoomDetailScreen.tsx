@@ -60,15 +60,7 @@ const roomServices: RoomService[] = [
   { id: '4', icon: 'food-apple', label: 'Makanan Organik' },
 ];
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
 
 export default function HotelRoomDetailScreen() {
   const navigation = useNavigation<NavigationProp>();

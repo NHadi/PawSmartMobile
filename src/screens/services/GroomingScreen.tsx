@@ -20,18 +20,7 @@ type NavigationProp = StackNavigationProp<ServicesStackParamList, 'Grooming'>;
 
 type ServiceType = 'walkIn' | 'homeService' | null;
 
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-  yellow: '#F5A623',
-  blue: '#4A90D9',
-  green: '#4CAF50',
-};
+import { THEME } from '../../constants/theme';
 
 export default function GroomingScreen() {
   const navigation = useNavigation<NavigationProp>();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,10 @@ import {
   Platform,
   TextInput,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -20,19 +21,12 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
+import DoctorService, { DoctorDetail, DoctorSchedule } from '../../services/DoctorService';
+import PetService, { Pet } from '../../services/petService';
 
 const { width } = Dimensions.get('window');
 
 type NavigationProp = StackNavigationProp<ServicesStackParamList, 'DoctorDetail'>;
-
-interface Pet {
-  id: string;
-  name: string;
-  breed: string;
-  gender: string;
-  age: string;
-  image: any;
-}
 
 interface TimeSlot {
   id: string;
@@ -40,43 +34,82 @@ interface TimeSlot {
   isAvailable: boolean;
 }
 
-const mockPet: Pet = {
-  id: '1',
-  name: 'Name Pet',
-  breed: 'Anjing, Chihuahua',
-  gender: 'Jantan',
-  age: '1 tahun',
-  image: require('../../../assets/product-placeholder.jpg'),
-};
-
-const mockTimeSlots: TimeSlot[] = [
-  { id: '1', time: '09.00 - 11.00', isAvailable: true },
-  { id: '2', time: '12.00 - 14.00', isAvailable: true },
-  { id: '3', time: '15.00 - 18.00', isAvailable: true },
-];
-
-const THEME = {
-  primary: Colors.primary.main,
-  background: Colors.background.primary,
-  backgroundSecondary: Colors.background.secondary,
-  textPrimary: Colors.text.primary,
-  textSecondary: Colors.text.secondary,
-  border: Colors.border.light,
-  white: '#FFFFFF',
-};
+import { THEME } from '../../constants/theme';
 
 export default function DoctorDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
   const { doctorId } = route.params as { doctorId: string };
 
-  const [selectedPet, setSelectedPet] = useState<Pet>(mockPet);
+  const [doctor, setDoctor] = useState<DoctorDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState('2 Mei 2025');
+  const [selectedDate, setSelectedDate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [complaint, setComplaint] = useState('');
-  const [isTimeSlotExpanded, setIsTimeSlotExpanded] = useState(false);
+  const [isTimeSlotExpanded, setIsTimeSlotExpanded] = useState(true);
+
+  const [error, setError] = useState<string | null>(null);
+
+  // Generate simple time slots for now since backend logic for specific availability might be complex
+  // ideally we filter available slots based on doctor.schedules and bookings
+  const generateTimeSlots = () => {
+    // Mock slots based on working hours if available, else standard
+    return [
+      { id: '1', time: '09.00 - 11.00', isAvailable: true },
+      { id: '2', time: '12.00 - 14.00', isAvailable: true },
+      { id: '3', time: '15.00 - 18.00', isAvailable: true },
+    ];
+  };
+
+  const [timeSlots, setTimeSlots] = useState(generateTimeSlots());
+
+  const fetchDoctor = async () => {
+    try {
+      setError(null);
+      const data = await DoctorService.getDoctorDetail(Number(doctorId));
+      setDoctor(data);
+    } catch (error: any) {
+      console.error('Failed to fetch doctor detail:', error);
+      setError(error.message || 'Gagal memuat data dokter');
+    }
+  };
+
+  const fetchPets = async () => {
+    try {
+      const userPets = await PetService.getPets();
+      setPets(userPets);
+      if (userPets.length > 0) {
+        setSelectedPet(userPets[0]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pets:', error);
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      await Promise.all([fetchDoctor(), fetchPets()]);
+      setLoading(false);
+    };
+    init();
+
+    // Set default date formatted
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const formatted = `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    setSelectedDate(formatted);
+  }, [doctorId]);
+
+  // Refresh pets when coming back (in case user added a pet)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchPets();
+    }, [])
+  );
 
   const handleDatePicker = () => {
     setShowDatePicker(true);
@@ -93,15 +126,73 @@ export default function DoctorDetailScreen() {
   };
 
   const handleBooking = () => {
+    if (!doctor) return;
+    if (!selectedPet) {
+      // Prompt to add pet or select one
+      alert('Mohon pilih hewan peliharaan terlebih dahulu');
+      return;
+    }
+
     navigation.navigate('DoctorBookingCheckout', {
-      doctorId: doctorId,
-      doctorName: 'dr. Taylor Swift',
+      doctorId: doctor.id.toString(),
+      doctorName: doctor.name,
+      doctorImage: doctor.photo || undefined,
+      consultationFee: Number(doctor.consultation_fee),
+      homeServiceFee: Number(doctor.home_service_fee),
       date: selectedDate,
-      timeSlot: mockTimeSlots.find(s => s.id === selectedTimeSlot)?.time || '',
-      petId: selectedPet.id,
+      timeSlot: timeSlots.find(s => s.id === selectedTimeSlot)?.time || '',
+      petId: selectedPet.id?.toString(),
       complaint: complaint,
     });
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={THEME.primary} />
+      </View>
+    );
+  }
+
+  if (error || !doctor) {
+    return (
+      <SafeAreaView style={[styles.container, styles.center]}>
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color={THEME.error || '#FF3B30'} />
+          <Text style={styles.errorTitle}>Oops!</Text>
+          <Text style={styles.errorMessage}>
+            {error || 'Dokter tidak ditemukan'}
+          </Text>
+          <Text style={styles.errorSuggestion}>
+            Dokter yang Anda cari mungkin sudah tidak tersedia atau terjadi kesalahan koneksi.
+          </Text>
+          <View style={styles.errorButtons}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setLoading(true);
+                fetchDoctor().then(() => setLoading(false));
+              }}
+            >
+              <MaterialIcons name="refresh" size={20} color={THEME.white} />
+              <Text style={styles.retryButtonText}>Coba Lagi</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backErrorButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.backErrorButtonText}>Kembali</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const imageSource = doctor.photo
+    ? { uri: doctor.photo }
+    : require('../../../assets/product-placeholder.jpg');
 
   return (
     <>
@@ -129,35 +220,33 @@ export default function DoctorDetailScreen() {
           {/* Doctor Image */}
           <View style={styles.doctorImageContainer}>
             <Image
-              source={require('../../../assets/product-placeholder.jpg')}
+              source={imageSource}
               style={styles.doctorImage}
               resizeMode="cover"
             />
-            {/* 24/7 Badge */}
-            <View style={styles.badge24}>
-              <Text style={styles.badge24Text}>24/7</Text>
-              <Text style={styles.badgeSubText}>Tersedia</Text>
-            </View>
+            {/* 24/7 Badge - Only if available */}
+            {doctor.is_available && (
+              <View style={styles.badge24}>
+                <Text style={styles.badge24Text}>24/7</Text>
+                <Text style={styles.badgeSubText}>Tersedia</Text>
+              </View>
+            )}
+
             {/* Rating Badge */}
             <View style={styles.ratingBadge}>
               <MaterialIcons name="star" size={14} color="#FFD700" />
-              <Text style={styles.ratingText}>4.9</Text>
-            </View>
-            {/* Photo Count Badge */}
-            <View style={styles.photoCountBadge}>
-              <MaterialIcons name="photo-library" size={14} color={THEME.white} />
-              <Text style={styles.photoCountText}>2/4</Text>
+              <Text style={styles.ratingText}>{doctor.rating || '4.9'}</Text>
             </View>
           </View>
 
           {/* Doctor Info */}
           <View style={styles.doctorInfoSection}>
-            <Text style={styles.doctorName}>dr. Taylor Swift</Text>
-            <Text style={styles.doctorSpecialization}>Dokter Spesialis Hewan</Text>
+            <Text style={styles.doctorName}>{doctor.name}</Text>
+            <Text style={styles.doctorSpecialization}>{doctor.specialization || 'Dokter Hewan'}</Text>
             <View style={styles.locationRow}>
-              <Text style={styles.distanceText}>3 th perjalanan</Text>
+              <Text style={styles.distanceText}>{doctor.experience_years} th pengalaman</Text>
               <Text style={styles.dotSeparator}>•</Text>
-              <Text style={styles.locationText}>Jakarta Timur</Text>
+              <Text style={styles.locationText}>{doctor.location || 'Jakarta'}</Text>
             </View>
 
             {/* Direct Button */}
@@ -172,10 +261,11 @@ export default function DoctorDetailScreen() {
 
           {/* About Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tentang Salon</Text>
+            <Text style={styles.sectionTitle}>Tentang Dokter</Text>
             <Text style={styles.aboutText}>
-              Lorem ipsum dolor sit amet consectetur. Tellus odio hac consectetur adipiscing a.
-              Nisl quam pretium tortor massa integer orci suspendisse etiam
+              {doctor.qualification
+                ? `${doctor.qualification}. Spesialis dengan pengalaman ${doctor.experience_years} tahun.`
+                : 'Dokter hewan profesional yang berdedikasi untuk kesehatan peliharaan anda.'}
             </Text>
           </View>
 
@@ -187,19 +277,34 @@ export default function DoctorDetailScreen() {
                 style={styles.pilihButton}
                 onPress={() => navigation.navigate('PetSelection')}
               >
-                <Text style={styles.pilihText}>Pilih</Text>
+                <Text style={styles.pilihText}>{selectedPet ? 'Ganti' : 'Pilih'}</Text>
                 <MaterialIcons name="chevron-right" size={18} color={THEME.primary} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.petCard}>
-              <Image source={selectedPet.image} style={styles.petImage} />
-              <View style={styles.petInfo}>
-                <Text style={styles.petName}>{selectedPet.name}</Text>
-                <Text style={styles.petBreed}>{selectedPet.breed}</Text>
-                <Text style={styles.petDetails}>{selectedPet.gender}, {selectedPet.age}</Text>
+            {selectedPet ? (
+              <View style={styles.petCard}>
+                <Image
+                  source={selectedPet.photo ? { uri: selectedPet.photo } : require('../../../assets/product-placeholder.jpg')}
+                  style={styles.petImage}
+                />
+                <View style={styles.petInfo}>
+                  <Text style={styles.petName}>{selectedPet.name}</Text>
+                  <Text style={styles.petBreed}>{selectedPet.breed || selectedPet.type}</Text>
+                  <Text style={styles.petDetails}>
+                    {selectedPet.gender === 'male' ? 'Jantan' : selectedPet.gender === 'female' ? 'Betina' : '-'}
+                    {selectedPet.age ? `, ${selectedPet.age} tahun` : ''}
+                  </Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.addPetPlaceholder}
+                onPress={() => navigation.navigate('PetSelection')}
+              >
+                <Text style={styles.addPetText}>+ Tambah / Pilih Hewan</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Date Selection */}
@@ -248,7 +353,7 @@ export default function DoctorDetailScreen() {
 
             {isTimeSlotExpanded && (
               <View style={styles.timeSlots}>
-                {mockTimeSlots.map((slot) => (
+                {timeSlots.map((slot) => (
                   <TouchableOpacity
                     key={slot.id}
                     style={[
@@ -274,8 +379,12 @@ export default function DoctorDetailScreen() {
 
         {/* Bottom Price and Book Button */}
         <View style={styles.bottomContainer}>
-          <Text style={styles.totalPrice}>Rp 350.000</Text>
-          <TouchableOpacity style={styles.bookButton} onPress={handleBooking}>
+          <Text style={styles.totalPrice}>Rp {Number(doctor.consultation_fee).toLocaleString('id-ID')}</Text>
+          <TouchableOpacity
+            style={[styles.bookButton, (!selectedTimeSlot || !selectedPet) && styles.bookButtonDisabled]}
+            onPress={handleBooking}
+            disabled={!selectedTimeSlot || !selectedPet}
+          >
             <Text style={styles.bookButtonText}>Pesan Sekarang</Text>
           </TouchableOpacity>
         </View>
@@ -300,6 +409,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.background,
+  },
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   header: {
     flexDirection: 'row',
@@ -515,6 +628,19 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.regular,
     color: THEME.textSecondary,
   },
+  addPetPlaceholder: {
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: THEME.primary,
+    borderStyle: 'dashed',
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center'
+  },
+  addPetText: {
+    color: THEME.primary,
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.fontSize.sm
+  },
   dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -606,9 +732,70 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
   },
+  bookButtonDisabled: {
+    backgroundColor: THEME.border
+  },
   bookButtonText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.semibold,
     color: THEME.white,
+  },
+  errorContainer: {
+    padding: Spacing.xl,
+    alignItems: 'center',
+    width: '100%',
+  },
+  errorTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontFamily: Typography.fontFamily.bold,
+    color: THEME.textPrimary,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  errorMessage: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.medium,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xs,
+  },
+  errorSuggestion: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
+  errorButtons: {
+    gap: Spacing.md,
+    width: '100%',
+    alignItems: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.primary,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+    minWidth: 150,
+  },
+  retryButtonText: {
+    color: THEME.white,
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.fontSize.base,
+  },
+  backErrorButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    minWidth: 150,
+    alignItems: 'center',
+  },
+  backErrorButtonText: {
+    color: THEME.textSecondary,
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.fontSize.base,
   },
 });

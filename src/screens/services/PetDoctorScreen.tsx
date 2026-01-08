@@ -21,17 +21,7 @@ type NavigationProp = StackNavigationProp<ServicesStackParamList, 'PetDoctor'>;
 type ServiceType = 'walkIn' | 'homeService' | null;
 
 // Consistent colors based on app theme
-const THEME = {
-  primary: Colors.primary.main, // #1C49C2 - Blue for Walk-in
-  primaryLight: '#EEF2FB', // Light blue for backgrounds
-  green: '#4CAF50', // Green for Home Service
-  greenLight: '#E8F5E9', // Light green for backgrounds
-  background: Colors.background.secondary, // #F5F5F5
-  white: Colors.background.primary, // #FFFFFF
-  textPrimary: Colors.text.primary, // #212121
-  textSecondary: Colors.text.secondary, // #757575
-  border: Colors.border.light, // #E0E0E0
-};
+import { THEME } from '../../constants/theme';
 
 export default function PetDoctorScreen() {
   const navigation = useNavigation<NavigationProp>();
