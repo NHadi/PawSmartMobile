@@ -36,59 +36,88 @@ interface Groomer {
   image: any;
 }
 
-const mockGroomers: Groomer[] = [
-  {
-    id: '1',
-    name: 'Michelle Andriani',
-    type: 'Groomer',
-    rating: 4.9,
-    price: 'Rp90.000',
-    experience: '2th Perjalanan',
-    location: 'Jakarta Timur',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '2',
-    name: 'Michelle Andriani',
-    type: 'Groomer',
-    rating: 4.9,
-    price: 'Rp90.000',
-    experience: '2th Perjalanan',
-    location: 'Jakarta Timur',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '3',
-    name: 'Michelle Andriani',
-    type: 'Groomer',
-    rating: 4.8,
-    price: 'Rp85.000',
-    experience: '3th Perjalanan',
-    location: 'Jakarta Selatan',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-  {
-    id: '4',
-    name: 'Michelle Andriani',
-    type: 'Groomer',
-    rating: 4.7,
-    price: 'Rp80.000',
-    experience: '1th Perjalanan',
-    location: 'Jakarta Barat',
-    image: require('../../../assets/product-placeholder.jpg'),
-  },
-];
-
+import { useAuth } from '../../contexts/AuthContext';
+import standaloneAddressService, { Address } from '../../services/address/standaloneAddressService';
+import GroomingService, { Salon } from '../../services/GroomingService';
+import { ActivityIndicator } from 'react-native';
 import { THEME } from '../../constants/theme';
 
 export default function GroomingHomeServiceScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
+
   const [selectedDate, setSelectedDate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const customerName = 'Alan Syahlan (+6282337709390)';
-  const customerAddress = 'Jl. K.H. Mas Mansyur No. 8A, RT.10/RW.6, Karet Tengsin, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10220.';
+  // Data State
+  const [groomers, setGroomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // User Info
+  const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('Loading address...');
+
+  React.useEffect(() => {
+    fetchGroomers();
+    fetchUserAddress();
+  }, []);
+
+  React.useEffect(() => {
+    if (user) {
+      const name = user.name || `${user.firstName} ${user.lastName}`.trim();
+      const phone = user.phone || '';
+      setCustomerName(`${name} ${phone ? `(${phone})` : ''}`);
+    }
+  }, [user]);
+
+  const fetchUserAddress = async () => {
+    try {
+      const addresses = await standaloneAddressService.getAddresses();
+      if (addresses && addresses.length > 0) {
+        const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
+        const parts = [
+          defaultAddr.address_line1,
+          defaultAddr.subdistrict,
+          defaultAddr.district,
+          defaultAddr.city,
+          defaultAddr.state,
+        ].filter(Boolean);
+        setCustomerAddress(parts.join(', '));
+      } else {
+        setCustomerAddress('Belum ada alamat tersimpan.');
+      }
+    } catch (error) {
+      setCustomerAddress('Gagal memuat alamat.');
+    }
+  };
+
+  const fetchGroomers = async () => {
+    try {
+      setLoading(true);
+      // Fetch salons (partners with type grooming/multi)
+      // Ideally we filter by home_service=true if API supports it.
+      // For now passing it in query just in case backend supports it later
+      const response = await GroomingService.getSalons({ city: '' });
+
+      const mapped = response.data.map((salon: any) => ({
+        id: salon.id.toString(),
+        name: salon.name,
+        type: 'Grooming Salon', // Or check salon.partner_type
+        rating: salon.rating || 5.0,
+        price: 'Rp' + (salon.price_start || 50000).toLocaleString('id-ID'),
+        experience: 'Professional', // Placeholder
+        location: salon.address || salon.city || 'Jakarta',
+        image: salon.photo_url ? { uri: salon.photo_url } : require('../../../assets/product-placeholder.jpg'),
+      }));
+
+      setGroomers(mapped);
+    } catch (error) {
+      console.error('Failed to fetch groomers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDatePicker = () => {
     setShowDatePicker(true);
@@ -104,11 +133,11 @@ export default function GroomingHomeServiceScreen() {
     setSelectedDate(formatted);
   };
 
-  const handleGroomerPress = (groomer: Groomer) => {
+  const handleGroomerPress = (groomer: any) => {
     navigation.navigate('GroomingDetail', { groomingId: groomer.id });
   };
 
-  const renderGroomerCard = (groomer: Groomer, index: number) => (
+  const renderGroomerCard = (groomer: any, index: number) => (
     <TouchableOpacity
       key={groomer.id}
       style={[styles.groomerCard, index % 2 === 0 ? styles.cardLeft : styles.cardRight]}
@@ -131,7 +160,6 @@ export default function GroomingHomeServiceScreen() {
         <Text style={styles.priceText}>{groomer.price}</Text>
 
         <View style={styles.locationRow}>
-          <Text style={styles.experienceText}>{groomer.experience}</Text>
           <Text style={styles.locationText}>{groomer.location}</Text>
         </View>
       </View>
@@ -205,9 +233,19 @@ export default function GroomingHomeServiceScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Rekomendasi Groomer Untuk Kamu</Text>
 
-            <View style={styles.groomersGrid}>
-              {mockGroomers.map((groomer, index) => renderGroomerCard(groomer, index))}
-            </View>
+            {loading ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={THEME.primary} />
+              </View>
+            ) : groomers.length > 0 ? (
+              <View style={styles.groomersGrid}>
+                {groomers.map((groomer, index) => renderGroomerCard(groomer, index))}
+              </View>
+            ) : (
+              <Text style={{ textAlign: 'center', color: THEME.textSecondary, marginTop: 20 }}>
+                Tidak ada salon grooming tersedia.
+              </Text>
+            )}
           </View>
         </ScrollView>
 

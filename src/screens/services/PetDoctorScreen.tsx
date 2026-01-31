@@ -101,12 +101,12 @@ export default function PetDoctorScreen() {
                 </View>
                 <View style={styles.cardTitleContainer}>
                   <Text style={styles.cardTitle}>Walk-in</Text>
-                  <Text style={[styles.cardSubtitle, { color: THEME.primary }]}>Kunjungi Klinik</Text>
+                  <Text style={[styles.cardSubtitle, { color: THEME.primary }]}>Kunjungi clinic</Text>
                 </View>
               </View>
 
               <Text style={styles.cardDescription}>
-                Bawa hewan peliharaan Anda ke klinik atau rumah sakit hewan terdekat
+                Bawa hewan peliharaan Anda ke clinic atau rumah sakit hewan terdekat
               </Text>
 
               <View style={styles.tagsContainer}>

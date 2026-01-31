@@ -21,6 +21,7 @@ export interface Doctor {
     available_days?: string[];
     working_hours?: any;
     languages?: string[];
+    partner_type?: string;
 }
 
 export interface DoctorSchedule {
@@ -66,6 +67,11 @@ class DoctorService {
 
     async getDoctorDetail(id: number): Promise<DoctorDetail> {
         const response = await apiClient.get<any>(`${this.BASE_PATH}/${id}`);
+        return response.data;
+    }
+
+    async getPartnerDoctors(partnerId: number): Promise<Doctor[]> {
+        const response = await apiClient.get<any>(`${this.BASE_PATH}/partner/${partnerId}/doctors`);
         return response.data;
     }
 

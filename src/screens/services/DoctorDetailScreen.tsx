@@ -21,7 +21,8 @@ import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Spacing, BorderRadius } from '../../constants/spacing';
 import { ServicesStackParamList } from '../../navigation/types';
-import DoctorService, { DoctorDetail, DoctorSchedule } from '../../services/DoctorService';
+import DoctorService, { DoctorDetail, DoctorSchedule, Doctor } from '../../services/DoctorService';
+import { FlatList } from 'react-native';
 import PetService, { Pet } from '../../services/petService';
 
 const { width } = Dimensions.get('window');
@@ -52,6 +53,10 @@ export default function DoctorDetailScreen() {
   const [complaint, setComplaint] = useState('');
   const [isTimeSlotExpanded, setIsTimeSlotExpanded] = useState(true);
 
+  // Clinic Partner Logic
+  const [partnerDoctors, setPartnerDoctors] = useState<Doctor[]>([]);
+  const [selectedPartnerDoctor, setSelectedPartnerDoctor] = useState<Doctor | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   // Generate simple time slots for now since backend logic for specific availability might be complex
@@ -72,6 +77,12 @@ export default function DoctorDetailScreen() {
       setError(null);
       const data = await DoctorService.getDoctorDetail(Number(doctorId));
       setDoctor(data);
+
+      // If Clinic, fetch associated doctors
+      if (data.partner_type === 'clinic') {
+        const doctors = await DoctorService.getPartnerDoctors(Number(doctorId));
+        setPartnerDoctors(doctors);
+      }
     } catch (error: any) {
       console.error('Failed to fetch doctor detail:', error);
       setError(error.message || 'Gagal memuat data dokter');
@@ -133,11 +144,16 @@ export default function DoctorDetailScreen() {
       return;
     }
 
+    const bookingDoctorId = selectedPartnerDoctor ? selectedPartnerDoctor.id.toString() : doctor.id.toString();
+    const bookingDoctorName = selectedPartnerDoctor ? selectedPartnerDoctor.name : doctor.name;
+    const bookingDoctorImage = selectedPartnerDoctor?.photo || doctor.photo || undefined;
+    const bookingFee = selectedPartnerDoctor ? Number(selectedPartnerDoctor.consultation_fee) : Number(doctor.consultation_fee);
+
     navigation.navigate('DoctorBookingCheckout', {
-      doctorId: doctor.id.toString(),
-      doctorName: doctor.name,
-      doctorImage: doctor.photo || undefined,
-      consultationFee: Number(doctor.consultation_fee),
+      doctorId: bookingDoctorId,
+      doctorName: bookingDoctorName,
+      doctorImage: bookingDoctorImage,
+      consultationFee: bookingFee,
       homeServiceFee: Number(doctor.home_service_fee),
       date: selectedDate,
       timeSlot: timeSlots.find(s => s.id === selectedTimeSlot)?.time || '',
@@ -268,6 +284,43 @@ export default function DoctorDetailScreen() {
                 : 'Dokter hewan profesional yang berdedikasi untuk kesehatan peliharaan anda.'}
             </Text>
           </View>
+
+          {/* Partner Doctors Selection (For Clinics) */}
+          {partnerDoctors.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Pilih Dokter</Text>
+              <Text style={styles.aboutText}>Silakan pilih dokter spesialis yang tersedia di klinik ini.</Text>
+
+              <FlatList
+                horizontal
+                data={partnerDoctors}
+                keyExtractor={(item) => item.id.toString()}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: Spacing.md, marginTop: Spacing.md }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.partnerDoctorCard,
+                      selectedPartnerDoctor?.id === item.id && styles.partnerDoctorCardSelected
+                    ]}
+                    onPress={() => setSelectedPartnerDoctor(item)}
+                  >
+                    <Image
+                      source={item.photo ? { uri: item.photo } : require('../../../assets/product-placeholder.jpg')}
+                      style={styles.partnerDoctorImage}
+                    />
+                    <Text style={styles.partnerDoctorName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.partnerDoctorSpec} numberOfLines={1}>{item.specialization}</Text>
+                    {selectedPartnerDoctor?.id === item.id && (
+                      <View style={styles.checkIcon}>
+                        <MaterialIcons name="check-circle" size={20} color={THEME.primary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          )}
 
           {/* Pet Selection */}
           <View style={styles.section}>
@@ -797,5 +850,42 @@ const styles = StyleSheet.create({
     color: THEME.textSecondary,
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.fontSize.base,
+  },
+  partnerDoctorCard: {
+    width: 120,
+    padding: Spacing.sm,
+    backgroundColor: THEME.backgroundSecondary,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  partnerDoctorCardSelected: {
+    borderColor: THEME.primary,
+    backgroundColor: '#F0F9FA', // Light primary
+  },
+  partnerDoctorImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: Spacing.xs,
+  },
+  partnerDoctorName: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.medium,
+    color: THEME.textPrimary,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  partnerDoctorSpec: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.regular,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+  },
+  checkIcon: {
+    position: 'absolute',
+    top: Spacing.xs,
+    right: Spacing.xs,
   },
 });

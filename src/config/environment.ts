@@ -19,7 +19,7 @@ export const config = {
 
   // Standalone API Configuration
   STANDALONE_API: {
-    BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://43.157.209.126:3001',
+    BASE_URL: 'https://4eec442e431d.ngrok-free.app', // process.env.EXPO_PUBLIC_API_BASE_URL || 'http://43.157.209.126:3001',
     JWT_SECRET: process.env.EXPO_PUBLIC_JWT_SECRET || 'your-jwt-secret-key',
     TOKEN_REFRESH_THRESHOLD: 300, // Refresh token 5 minutes before expiry
   },

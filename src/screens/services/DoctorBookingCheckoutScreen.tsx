@@ -9,6 +9,8 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -41,6 +43,11 @@ export default function DoctorBookingCheckoutScreen() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Doctor Selection (Walk-In)
+  const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
+  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+
   // Get route params
   const params = route.params as {
     doctorId: string;
@@ -55,25 +62,28 @@ export default function DoctorBookingCheckoutScreen() {
   };
 
   const bookingData = {
-    doctorName: params?.doctorName || 'Dokter',
-    doctorImage: params?.doctorImage
-      ? { uri: params.doctorImage }
-      : require('../../../assets/product-placeholder.jpg'),
+    doctorName: selectedDoctor ? selectedDoctor.name : (params?.doctorName || 'Dokter'),
+    doctorImage: selectedDoctor?.image
+      ? { uri: selectedDoctor.image }
+      : params?.doctorImage
+        ? { uri: params.doctorImage }
+        : require('../../../assets/product-placeholder.jpg'),
     date: params?.date,
     timeSlot: params?.timeSlot,
   };
 
   const pricing = {
-    doctorFee: params?.consultationFee || 0,
+    doctorFee: selectedDoctor ? (Number(selectedDoctor.consultation_fee) || params?.consultationFee || 0) : (params?.consultationFee || 0),
     travelFee: params?.homeServiceFee || 0, // Assuming home service for this flow
     insurance: 2500,
     voucherDiscount: 0,
     adminFee: 2500,
   };
 
-  // Load default address
+  // Load default address and potential doctors
   useEffect(() => {
-    const loadAddress = async () => {
+    const initData = async () => {
+      // 1. Load Address
       try {
         const addresses = await standaloneAddressService.getAddresses();
         if (addresses.length > 0) {
@@ -99,8 +109,22 @@ export default function DoctorBookingCheckoutScreen() {
       } catch (error) {
         console.error('Failed to load addresses:', error);
       }
+
+      // 2. Load Partner Doctors (if this is a clinic)
+      if (params?.doctorId) {
+        try {
+          const doctors = await DoctorService.getPartnerDoctors(Number(params.doctorId));
+          if (doctors && doctors.length > 0) {
+            setAvailableDoctors(doctors);
+            // Optional: Auto-select if only 1? No, let user choose or default to Clinic.
+          }
+        } catch (error) {
+          // Ignore if not a partner or fails
+          console.log('Not a clinic or no doctors found');
+        }
+      }
     };
-    loadAddress();
+    initData();
   }, []);
 
   const calculateTotal = () => {
@@ -131,6 +155,11 @@ export default function DoctorBookingCheckoutScreen() {
     setSelectedPayment(method);
   };
 
+  const handleSelectDoctor = (doctor: any) => {
+    setSelectedDoctor(doctor);
+    setShowDoctorModal(false);
+  };
+
   const handlePayment = async () => {
     if (!selectedAddress) {
       Alert.alert('Alamat Kosong', 'Mohon pilih alamat untuk layanan home service.');
@@ -143,39 +172,14 @@ export default function DoctorBookingCheckoutScreen() {
 
     setSubmitting(true);
     try {
-      // Construct appointment data
-      // NOTE: backend expects specific format. 
-      // appointment_date: YYYY-MM-DD
-      // appointment_time: HH:MM
-
-      // We need to parse params.date string back to date object if needed, 
-      // but let's assume for now we pass it as string or format it.
-      // The backend `createAppointment` takes `appointment_date`, `appointment_time`.
-
-      // Simple date parsing or just passing as is if backend handles it
-      // The backend expects typical DATE/TIME formats.
-      // `2 Mei 2025` -> need to convert to `2025-05-02`.
-      // This is tricky without date-fns or similar.
-      // For MVP, passing the string and hoping backend or Date() constructor handles it, 
-      // OR we should have passed ISO string from prev screen.
-
-      // Let's rely on standard ISO string from Date object in prev screen. 
-      // But we displayed formatted date.
-
-      // Assuming params.date is just display string, we might fail.
-      // Ideally we pass `dateIso` param.
-
-      // Let's mock the date conversion for now or use current date if parsing fails.
       const dateParts = params.date.split(' '); // "2 Mei 2025"
-      // Mapping months... this is fragile.
-      // Better: use current date for demo or proper parsing.
       const bookingDate = new Date().toISOString().split('T')[0]; // Fallback to today
 
       const bookingPayload = {
-        doctor_id: Number(params.doctorId),
-        pet_id: params.petId ? Number(params.petId) : 0, // Fallback to 0 if undefined, or handle error
+        doctor_id: selectedDoctor ? Number(selectedDoctor.id) : Number(params.doctorId), // Use selected doctor OR clinic ID
+        pet_id: params.petId ? Number(params.petId) : 0,
         appointment_date: bookingDate,
-        appointment_time: params.timeSlot.split(' - ')[0].replace('.', ':'), // Take start time and format to HH:MM
+        appointment_time: params.timeSlot.split(' - ')[0].replace('.', ':'),
         service_type: 'home-service' as const,
         reason: params.complaint,
         symptoms: params.complaint,
@@ -185,7 +189,7 @@ export default function DoctorBookingCheckoutScreen() {
       const result = await DoctorService.createAppointment(bookingPayload);
 
       Alert.alert('Sukses', 'Janji temu berhasil dibuat!', [
-        { text: 'OK', onPress: () => navigation.navigate('ServicesHome') } // Go back to services or history
+        { text: 'OK', onPress: () => navigation.navigate('ServicesHome') }
       ]);
 
     } catch (error: any) {
@@ -310,19 +314,40 @@ export default function DoctorBookingCheckoutScreen() {
           )}
 
           {/* Doctor - Home Service */}
+          {/* Doctor - Home Service */}
           {renderSection(
-            'Dokter - Home Service',
+            'Dokter / Klinik',
             <View style={styles.sectionContent}>
-              <View style={styles.doctorRow}>
-                <Text style={styles.detailLabel}>Dokter</Text>
-                <View style={styles.doctorInfo}>
-                  <Image
-                    source={bookingData.doctorImage}
-                    style={styles.doctorImage}
-                  />
-                  <Text style={styles.doctorName}>{bookingData.doctorName}</Text>
+              <TouchableOpacity
+                style={[styles.doctorRow, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+                onPress={() => availableDoctors.length > 0 && setShowDoctorModal(true)}
+                disabled={availableDoctors.length === 0}
+              >
+                <View>
+                  <Text style={styles.detailLabel}>Dokter</Text>
+                  <View style={styles.doctorInfo}>
+                    <Image
+                      source={bookingData.doctorImage}
+                      style={styles.doctorImage}
+                    />
+                    <View>
+                      <Text style={styles.doctorName}>
+                        {availableDoctors.length > 0 && !selectedDoctor ? 'Pilih Dokter' : bookingData.doctorName}
+                      </Text>
+                      <Text style={[styles.detailLabel, { marginBottom: 0 }]}>
+                        {availableDoctors.length > 0 && !selectedDoctor ? 'Ketuk untuk memilih' : 'Dokter Spesialis Hewan'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
+                {availableDoctors.length > 0 && (
+                  <View>
+                    <Text style={{ color: THEME.primary, fontFamily: Typography.fontFamily.medium, fontSize: Typography.fontSize.sm }}>
+                      {selectedDoctor ? 'Ubah' : 'Pilih'} {'>'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Tanggal</Text>
                 <Text style={styles.detailValue}>{bookingData.date}</Text>
@@ -475,12 +500,52 @@ export default function DoctorBookingCheckoutScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Payment Method Modal */}
         <PaymentMethodModal
           visible={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           onSelect={handlePaymentMethodSelected}
         />
+
+        <Modal
+          visible={showDoctorModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDoctorModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: THEME.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: THEME.border }}>
+                <Text style={{ fontSize: 18, fontFamily: Typography.fontFamily.bold }}>Pilih Dokter</Text>
+                <TouchableOpacity onPress={() => setShowDoctorModal(false)}>
+                  <MaterialIcons name="close" size={24} color={THEME.textPrimary} />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={availableDoctors}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={{ padding: 20 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: THEME.border }}
+                    onPress={() => handleSelectDoctor(item)}
+                  >
+                    <Image
+                      source={require('../../../assets/product-placeholder.jpg')}
+                      style={{ width: 50, height: 50, borderRadius: 25, marginRight: 15 }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontFamily: Typography.fontFamily.semibold }}>{item.name}</Text>
+                      <Text style={{ fontSize: 14, color: THEME.textSecondary }}>{item.specialization}</Text>
+                    </View>
+                    {item.id === selectedDoctor?.id && (
+                      <MaterialIcons name="check-circle" size={24} color={THEME.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </>
   );

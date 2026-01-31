@@ -84,20 +84,63 @@ import { THEME } from '../../constants/theme';
 import DoctorService, { Doctor as DoctorModel } from '../../services/DoctorService';
 import { ActivityIndicator } from 'react-native';
 
+import { useAuth } from '../../contexts/AuthContext';
+import standaloneAddressService, { Address } from '../../services/address/standaloneAddressService';
+
 export default function DoctorHomeServiceScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [doctors, setDoctors] = useState<DoctorModel[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const customerName = 'Alan Syahlan (+6282337709390)';
-  const customerAddress = 'Jl. K.H. Mas Mansyur No. 8A, RT.10/RW.6, Karet Tengsin, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10220.';
+  // Dynamic User Info
+  const [address, setAddress] = useState<Address | null>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('Loading address...');
 
   React.useEffect(() => {
     fetchDoctors();
+    fetchUserAddress();
   }, []);
+
+  React.useEffect(() => {
+    if (user) {
+      const name = user.name || `${user.firstName} ${user.lastName}`.trim();
+      const phone = user.phone || '';
+      setCustomerName(`${name} ${phone ? `(${phone})` : ''}`);
+    }
+  }, [user]);
+
+  const fetchUserAddress = async () => {
+    try {
+      const addresses = await standaloneAddressService.getAddresses();
+      if (addresses && addresses.length > 0) {
+        // Find default or first address
+        const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
+        setAddress(defaultAddr);
+
+        // Format address string
+        const parts = [
+          defaultAddr.address_line1,
+          defaultAddr.subdistrict,
+          defaultAddr.district,
+          defaultAddr.city,
+          defaultAddr.state,
+          defaultAddr.postal_code
+        ].filter(Boolean);
+
+        setCustomerAddress(parts.join(', '));
+      } else {
+        setCustomerAddress('Belum ada alamat tersimpan. Klik edit untuk tambah.');
+      }
+    } catch (error) {
+      console.error('Failed to fetch user address:', error);
+      setCustomerAddress('Gagal memuat alamat.');
+    }
+  };
 
   const fetchDoctors = async () => {
     try {
