@@ -177,13 +177,36 @@ export default function EwalletPaymentScreen() {
 
   const checkPaymentStatus = async () => {
     try {
+      // First, check order status from backend (updated by webhook)
+      if (orderInfo?.orderId) {
+        try {
+          const order = await standaloneOrderService.getOrderById(orderInfo.orderId);
+          if (order) {
+            const orderStatus = order.state || order.custom_status;
+            const xenditStatus = order.xendit_payment_status;
+
+            console.log('Order status from backend:', { orderStatus, xenditStatus, orderId: orderInfo.orderId });
+
+            // Check if payment confirmed via webhook
+            if (orderStatus === 'paid' || orderStatus === 'payment_confirmed' || xenditStatus === 'PAID') {
+              console.log('Payment confirmed via webhook!');
+              setPaymentStatus('success');
+              handlePaymentSuccess();
+              return;
+            }
+          }
+        } catch (orderError) {
+          console.log('Failed to check order status from backend:', orderError);
+        }
+      }
+
+      // Fallback: Check directly with Xendit API
       if (!paymentData?.id) return;
 
-      // Determine provider from payment data or use XENDIT as default for e-wallets
       const provider = paymentData.provider || 'XENDIT';
-      const status = await paymentGatewayService.getPaymentStatus(paymentData.id, provider);
+      const status = await paymentGatewayService.getPaymentStatus(paymentData.id, provider, 'EWALLET');
 
-      if (status.isPaid || status.status === 'PAID' || status.status === 'SUCCEEDED') {
+      if (status.isPaid || status.status === 'PAID' || status.status === 'SUCCEEDED' || status.status === 'CAPTURED') {
         setPaymentStatus('success');
         handlePaymentSuccess();
       } else if (status.status === 'EXPIRED') {
@@ -191,6 +214,7 @@ export default function EwalletPaymentScreen() {
         handlePaymentExpired();
       }
     } catch (error) {
+      console.log('Payment status check error:', error);
     }
   };
 

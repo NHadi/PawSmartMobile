@@ -113,22 +113,43 @@ export default function VirtualAccountPaymentScreen() {
 
   const checkPaymentStatus = async () => {
     try {
+      // First, check order status from backend (updated by webhook)
+      if (orderInfo?.orderId) {
+        try {
+          const order = await standaloneOrderService.getOrderById(orderInfo.orderId);
+          if (order) {
+            const orderStatus = order.state || order.custom_status;
+            const xenditStatus = order.xendit_payment_status;
+
+            console.log('Order status from backend:', { orderStatus, xenditStatus, orderId: orderInfo.orderId });
+
+            // Check if payment confirmed via webhook
+            if (orderStatus === 'paid' || orderStatus === 'payment_confirmed' || xenditStatus === 'PAID') {
+              console.log('Payment confirmed via webhook!');
+              handlePaymentSuccess();
+              return;
+            }
+          }
+        } catch (orderError) {
+          console.log('Failed to check order status from backend:', orderError);
+        }
+      }
+
+      // Fallback: Check directly with Xendit API
       if (!paymentData?.id) {
         return;
       }
 
-      // Determine provider from payment data or use FLIP as default for virtual accounts
-      const provider = paymentData.provider || 'FLIP';
+      const provider = paymentData.provider || 'XENDIT';
+      const status = await paymentGatewayService.getPaymentStatus(paymentData.id, provider, 'VIRTUAL_ACCOUNT');
 
-      const status = await paymentGatewayService.getPaymentStatus(paymentData.id, provider);
-
-      if (status.status === 'PAID' || status.status === 'SUCCEEDED') {
+      if (status.status === 'PAID' || status.status === 'SUCCEEDED' || status.status === 'COMPLETED') {
         handlePaymentSuccess();
       } else if (status.status === 'EXPIRED') {
         handlePaymentExpired();
       }
     } catch (error) {
-      // Handle error silently
+      console.log('Payment status check error:', error);
     }
   };
 

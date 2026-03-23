@@ -72,15 +72,38 @@ export default function QRISPaymentScreen() {
 
   const checkPaymentStatus = async () => {
     try {
+      // First, check order status from backend (updated by webhook)
+      if (orderInfo?.orderId) {
+        try {
+          const order = await standaloneOrderService.getOrderById(orderInfo.orderId);
+          if (order) {
+            const orderStatus = order.state || order.custom_status;
+            const xenditStatus = order.xendit_payment_status;
+
+            console.log('Order status from backend:', { orderStatus, xenditStatus, orderId: orderInfo.orderId });
+
+            // Check if payment confirmed via webhook
+            if (orderStatus === 'paid' || orderStatus === 'payment_confirmed' || xenditStatus === 'PAID') {
+              console.log('Payment confirmed via webhook!');
+              setPaymentStatus('success');
+              handlePaymentSuccess();
+              return;
+            }
+          }
+        } catch (orderError) {
+          console.log('Failed to check order status from backend:', orderError);
+        }
+      }
+
+      // Fallback: Check directly with Xendit/Flip API
       if (!paymentData?.id && !paymentData?.qr_id) return;
 
-      // Determine provider and payment ID
-      const provider = paymentData.provider || 'FLIP'; // Default to FLIP (using staging endpoint)
-      const paymentId = paymentData.id || paymentData.qr_id; // Support both Xendit (id) and Flip (qr_id)
+      const provider = paymentData.provider || 'XENDIT';
+      const paymentId = paymentData.id || paymentData.qr_id;
 
-      const status = await paymentGatewayService.getPaymentStatus(paymentId, provider);
+      const status = await paymentGatewayService.getPaymentStatus(paymentId, provider, 'QRIS');
 
-      if (status.isPaid || status.status === 'PAID' || status.status === 'SUCCEEDED') {
+      if (status.isPaid || status.status === 'PAID' || status.status === 'SUCCEEDED' || status.status === 'COMPLETED') {
         setPaymentStatus('success');
         handlePaymentSuccess();
       } else if (status.status === 'EXPIRED') {

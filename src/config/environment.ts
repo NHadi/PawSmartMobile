@@ -19,16 +19,16 @@ export const config = {
 
   // Standalone API Configuration
   STANDALONE_API: {
-    BASE_URL: 'https://4eec442e431d.ngrok-free.app', // process.env.EXPO_PUBLIC_API_BASE_URL || 'http://43.157.209.126:3001',
+    BASE_URL: 'https://0ba22e1cf957.ngrok-free.app', // process.env.EXPO_PUBLIC_API_BASE_URL || 'http://43.157.209.126:3001',
     JWT_SECRET: process.env.EXPO_PUBLIC_JWT_SECRET || 'your-jwt-secret-key',
     TOKEN_REFRESH_THRESHOLD: 300, // Refresh token 5 minutes before expiry
   },
 
   // Payment Gateway Configuration
   PAYMENT_GATEWAYS: {
-    // Use Flip as primary provider with correct sandbox endpoint
-    PRIMARY_PROVIDER: 'FLIP' as const,
-    FALLBACK_PROVIDER: null, // No fallback
+    // Use Xendit as primary provider with Flip as fallback
+    PRIMARY_PROVIDER: 'XENDIT' as const,
+    FALLBACK_PROVIDER: 'FLIP' as const,
 
     // Flip Configuration
     FLIP: {
@@ -51,21 +51,26 @@ export const config = {
     XENDIT: {
       SECRET_KEY: process.env.EXPO_PUBLIC_XENDIT_SECRET_KEY ||
         (__DEV__
-          ? 'xnd_development_msfP7kWOSLK5Yq1W765yVEYv33hTaMU7llz1z84PTQLeNOBmb0Xl5550owlh3W'
-          : 'xnd_production_YOUR_PRODUCTION_SECRET_KEY'), // Replace with your production key
+          ? 'xnd_production_f44kwsHSftuuS70AV7WNlFYvH02BlIzi2rYZyodkW9oDQwkZgIRU9bPcb3EpvKs'
+          : 'xnd_production_f44kwsHSftuuS70AV7WNlFYvH02BlIzi2rYZyodkW9oDQwkZgIRU9bPcb3EpvKs'), // Replace with your production key
+      // ? 'xnd_development_k2Lbi7bmrFRKkwmGuU3UXhUVKXG3YZtYoSWdGg6QV4rsG0ui7tVH206YKC2V'
+      // : 'xnd_development_k2Lbi7bmrFRKkwmGuU3UXhUVKXG3YZtYoSWdGg6QV4rsG0ui7tVH206YKC2V'), // Replace with your production key
+
       PUBLIC_KEY: process.env.EXPO_PUBLIC_XENDIT_PUBLIC_KEY ||
         (__DEV__
-          ? 'xnd_public_development_fKdWUc1tI9wCWkP0u5QIOEL2yycIzd8WzO2S3s7NsvL6djBJZ2iXR6LPzgBeUhkx'
-          : 'xnd_public_production_YOUR_PRODUCTION_PUBLIC_KEY'), // Replace with your production key
+          // ? 'xnd_public_development_BvVl7oGWlbsBH5DLZ3fjeBxWTOJOrXDuXQWx0E3BtP_RZWluk8QBVv2OsvyHyXSx'
+          // : 'xnd_public_development_BvVl7oGWlbsBH5DLZ3fjeBxWTOJOrXDuXQWx0E3BtP_RZWluk8QBVv2OsvyHyXSx'), // Replace with your production key
+
+          ? 'xnd_public_production_qqam0GZmvxKB_PWnAaPAQ9QnXOGsEkD9APzxxBLVgMM2rryGCCh0dsf0KmHf2ov'
+          : 'xnd_public_production_qqam0GZmvxKB_PWnAaPAQ9QnXOGsEkD9APzxxBLVgMM2rryGCCh0dsf0KmHf2ov'), // Replace with your production key
       BASE_URL: 'https://api.xendit.co',
       WEBHOOK_URL: process.env.EXPO_PUBLIC_XENDIT_WEBHOOK_URL ||
-        (__DEV__
-          ? 'https://webhook.site/182463e6-a64b-441a-8f69-92416f08145c'
-          : 'https://your-production-webhook.com/xendit'), // Replace with your production webhook
+        'https://0ba22e1cf957.ngrok-free.app/api/v1/payment-webhooks/webhook/xendit',
       WEBHOOK_TOKEN: process.env.EXPO_PUBLIC_XENDIT_WEBHOOK_TOKEN ||
         (__DEV__
-          ? 'RSIYNgN5N5hEp9etz2k3ukqhNepjL86dIuhqGfPzNT4JoQmX'
-          : 'YOUR_PRODUCTION_WEBHOOK_TOKEN'), // Replace with your production token
+          // ? '0Fl3F4NcHSmKofCpss91K9sG5nGAs4JmmmuIYbFSzB9V3u0E'
+          ? 'Xtd02FYobV4TTpN2sP3F3W9A7h7yo6B3gPmZCjNHhTpOGPm7'
+          : 'Xtd02FYobV4TTpN2sP3F3W9A7h7yo6B3gPmZCjNHhTpOGPm7'), // Replace with your production token
     },
   },
 

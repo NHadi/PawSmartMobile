@@ -14,8 +14,8 @@ export type PaymentProvider = 'FLIP' | 'XENDIT' | 'SERVER';
 
 // Configuration for each provider
 const GATEWAY_CONFIG = {
-  PRIMARY_PROVIDER: 'FLIP' as PaymentProvider,
-  FALLBACK_PROVIDER: null, // Use only Flip, no fallback
+  PRIMARY_PROVIDER: 'XENDIT' as PaymentProvider,
+  FALLBACK_PROVIDER: 'FLIP' as PaymentProvider,
   RETRY_ATTEMPTS: 2,
   TIMEOUT_MS: 30000,
 };
@@ -63,16 +63,8 @@ class PaymentGatewayService {
     let provider = preferredProvider;
 
     if (!provider) {
-      // Route QRIS to Flip (staging endpoint /big_api/v3/pwf/bill)
-      // Route EWALLET to Flip (supports e-wallet methods via PWF API)
-      // Route VIRTUAL_ACCOUNT to Flip (mobile-friendly bank transfer)
-      if (request.paymentMethod === 'QRIS') {
-        provider = 'FLIP'; // Use Flip staging for QRIS
-      } else if (request.paymentMethod === 'EWALLET') {
-        provider = 'FLIP'; // Use Flip for E-Wallet
-      } else {
-        provider = GATEWAY_CONFIG.PRIMARY_PROVIDER; // Flip for others
-      }
+      // Use primary provider from config for all payment methods
+      provider = GATEWAY_CONFIG.PRIMARY_PROVIDER;
     }
 
     try {
@@ -93,6 +85,26 @@ class PaymentGatewayService {
       }
     } catch (error) {
       console.error(`Payment creation failed with ${provider}:`, error);
+
+      // Try fallback provider if available and different from current provider
+      const fallbackProvider = GATEWAY_CONFIG.FALLBACK_PROVIDER;
+      if (fallbackProvider && fallbackProvider !== provider) {
+        console.log(`Primary ${provider} failed, trying fallback ${fallbackProvider}...`);
+        try {
+          switch (fallbackProvider) {
+            case 'FLIP':
+              return await this.createFlipPayment(request, paymentOptions);
+            case 'XENDIT':
+              return await this.createXenditPayment(request, paymentOptions);
+            default:
+              throw error;
+          }
+        } catch (fallbackError) {
+          console.error(`Fallback ${fallbackProvider} also failed:`, fallbackError);
+          throw new Error(`Payment failed with both ${provider} and fallback ${fallbackProvider}: ${error.message}`);
+        }
+      }
+
       throw new Error(`Payment failed with ${provider}: ${error.message}`);
     }
   }
@@ -311,7 +323,7 @@ class PaymentGatewayService {
   /**
    * Check payment status across providers
    */
-  async getPaymentStatus(paymentId: string, provider: PaymentProvider): Promise<{
+  async getPaymentStatus(paymentId: string, provider: PaymentProvider, paymentType?: PaymentMethod): Promise<{
     isPaid: boolean;
     status: string;
     paymentData?: any;
@@ -364,12 +376,12 @@ class PaymentGatewayService {
           };
 
         case 'XENDIT':
-          // Use Xendit payment status check - determine payment type from payment ID or context
-          // For e-wallet payments from EwalletPaymentScreen, use 'EWALLET'
-          const xenditStatus = await xenditPaymentGateway.getPaymentStatus(paymentId, 'EWALLET');
+          // Use Xendit payment status check with the correct payment type
+          const xenditPaymentType = paymentType || 'EWALLET'; // Default to EWALLET for backward compatibility
+          const xenditStatus = await xenditPaymentGateway.getPaymentStatus(paymentId, xenditPaymentType);
 
           // Map Xendit status to our format
-          const isPaid = xenditStatus.status === 'SUCCEEDED' || xenditStatus.status === 'PAID' || xenditStatus.status === 'COMPLETED';
+          const isPaid = xenditStatus.status === 'SUCCEEDED' || xenditStatus.status === 'PAID' || xenditStatus.status === 'COMPLETED' || xenditStatus.status === 'ACTIVE';
 
           return {
             isPaid: isPaid,
